@@ -1,0 +1,6 @@
+- tracing support
+    - come up with a mechanism that will set up a trace on a specific code path
+        - use static analysis on code base to identify calls/casts
+        - have declarative mechanism to specify entry point
+        - generate match specs automatically
+        - set up trace automatically
