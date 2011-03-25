@@ -24,7 +24,7 @@
 %% -----------------------------------------------------------------------------
 
 %% module annotations
--module(esmt_world_server_SUITE).
+-module(world_server_SUITE).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
 %% compilation directives
@@ -32,7 +32,7 @@
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
--include("../include/test.hrl").
+-include("../../include/test.hrl").
 
 -define(SLAVE, esmt_test_slave).
 -define(PORT_HINT, 10100).

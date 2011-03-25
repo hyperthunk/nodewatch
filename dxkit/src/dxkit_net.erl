@@ -30,10 +30,9 @@
 %%
 %% -----------------------------------------------------------------------------
 
--module(esmt_net).
+-module(dxkit_net).
 
--include("esmt.hrl").
--include("types.hrl").
+-include("../include/types.hrl").
 
 -export([force_connect/1, connect/1, update_node/2]).
 
@@ -43,13 +42,13 @@
 -spec(connect/1 :: (Node::atom()) -> #node_info{};
                    (Node::#node_info{}) -> #node_info{}).
 connect(Node) when is_atom(Node) ->
-    ?DEBUG("Connecting to node '~p'~n", [Node]),
+    io:format("Connecting to node '~p'~n", [Node]),
     Status = case net_kernel:connect_node(Node) of
         ignored -> unknown;
         false   -> {nodedown, []};
         true    -> {nodeup, []}
     end,
-    ?DEBUG("Node '~p' status: ~p~n", [Node, Status]),
+    io:format("Node '~p' status: ~p~n", [Node, Status]),
     update_node(Node, Status);
 connect(#node_info{node_name=Name}=Node) ->
     NI = connect(Name),

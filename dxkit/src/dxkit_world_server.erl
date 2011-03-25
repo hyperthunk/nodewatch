@@ -32,7 +32,7 @@
 %%
 %% -----------------------------------------------------------------------------
 
--module(esmt_world_server).
+-module(dxkit_world_server).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
 -behavior(gen_server2).
@@ -47,8 +47,7 @@
         ,start/1
         ,start_link/1]).
 
--include("types.hrl").
--include("esmt.hrl").
+-include("../include/types.hrl").
 
 -record(wstate, {
     options  = []   :: [{atom(), term()}],
@@ -111,7 +110,7 @@ init(Args) ->
         false -> {World, Args};
         {value, {nodes, N}, Cfg} -> {N ++ World, Cfg}
     end,
-    NodeList = [ esmt_net:connect(Node) || Node <- Nodes, Node =/= node()],
+    NodeList = [ dxkit_net:connect(Node) || Node <- Nodes, Node =/= node()],
     State = #wstate{options=Config, nodes=NodeList},
     case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
         ok  ->
@@ -147,13 +146,13 @@ handle_info({nodedown, Node}, State) ->
 handle_info({nodedown, Node, InfoList}, State) ->
     reset_state({nodedown, Node, InfoList}, State);
 handle_info({timeout, TRef, refresh}, State) ->
-    Connections = [ esmt_net:connect(NI)
+    Connections = [ dxkit_net:connect(NI)
                     || NI <- State#wstate.nodes ],
-    ?DEBUG("Connections: ~p~n", [Connections]),
+    io:format("Connections: ~p~n", [Connections]),
     refresh_timer(State#wstate.options),
     {noreply, State};
 handle_info(Info, State) ->
-    ?INFO("node ~p unknown status message; state=~p", [Info, State]),
+    io:format("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
 terminate(Reason, State) ->
@@ -167,14 +166,14 @@ code_change(OldVsn, State, Extra) ->
 %% -----------------------------------------------------------------------------
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Nodes}=State) ->
-    ?INFO("node '~p' status change: ~p~n", [Node, NodeStatus]),
-    Match = esmt_utils:find(match_node(Node), undefined, Nodes),
+    io:format("node '~p' status change: ~p~n", [Node, NodeStatus]),
+    Match = dxkit_utils:find(match_node(Node), undefined, Nodes),
     case Match of
         undefined ->
-            ?WARN("Unable to find #node_info record matching ~p~n", [Node]),
+            io:format("Unable to find #node_info record matching ~p~n", [Node]),
             {noreply, State};
         NI when is_record(NI, node_info) ->
-            Nodes3 = [ esmt_net:update_node(NI, {NodeStatus, InfoList})
+            Nodes3 = [ dxkit_net:update_node(NI, {NodeStatus, InfoList})
                         | lists:filter(fun ignore_node/1, Nodes) ],
             {noreply, State#wstate{nodes=Nodes3}}
     end.
@@ -186,7 +185,7 @@ refresh_timer(Config) ->
                 milliseconds -> Int;
                 _ -> apply(timer, Uom, [Int])
             end,
-            ?INFO("Starting refresh timer with a ~p ms interval.~n", [Timeout]),
+            io:format("Starting refresh timer with a ~p ms interval.~n", [Timeout]),
             erlang:start_timer(Timeout, ?MODULE, refresh);
         _ -> ignored
     end.
