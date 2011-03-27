@@ -32,7 +32,6 @@
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
--include("../../include/test.hrl").
 
 -define(SLAVE, esmt_test_slave).
 -define(PORT_HINT, 10100).
@@ -41,10 +40,21 @@
 
 %% automatically registers all exported functions as test cases
 all() ->
-    ?EXPORT_TESTS(?MODULE).
+    [ FName || {FName, _} <- lists:filter(
+    fun ({module_info,_}) -> false ;
+        ({all,_}) -> false ;
+        ({init_per_suite,1}) -> false ;
+        ({end_per_suite,1}) -> false ;
+        ({_,1}) -> true ;
+        ({_,_}) -> false
+    end,
+    ?MODULE:module_info(exports))].
 
 %% sets up automated trace configuration (see test_config.ctc for details)
 init_per_testcase(TestCase, Config) ->
     {ok, Node} = slave:start(net_adm:localhost(), TestCase),
     TC = {TestCase,[{slave, esmt_net:force_connect(Node)}]},
     [TC|Config].
+
+nodedown_messages_should_get_through(Config) ->
+    ok.

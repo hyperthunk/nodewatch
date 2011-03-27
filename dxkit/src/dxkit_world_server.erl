@@ -110,7 +110,7 @@ init(Args) ->
         false -> {World, Args};
         {value, {nodes, N}, Cfg} -> {N ++ World, Cfg}
     end,
-    NodeList = [ dxkit_net:connect(Node) || Node <- Nodes, Node =/= node()],
+    NodeList = [dxkit_net:connect(Node) || Node <- Nodes, Node =/= node()],
     State = #wstate{options=Config, nodes=NodeList},
     case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
         ok  ->
@@ -146,8 +146,7 @@ handle_info({nodedown, Node}, State) ->
 handle_info({nodedown, Node, InfoList}, State) ->
     reset_state({nodedown, Node, InfoList}, State);
 handle_info({timeout, TRef, refresh}, State) ->
-    Connections = [ dxkit_net:connect(NI)
-                    || NI <- State#wstate.nodes ],
+    Connections = [dxkit_net:connect(NI) || NI <- State#wstate.nodes],
     io:format("Connections: ~p~n", [Connections]),
     refresh_timer(State#wstate.options),
     {noreply, State};
@@ -170,11 +169,12 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Nodes}=State) ->
     Match = dxkit_utils:find(match_node(Node), undefined, Nodes),
     case Match of
         undefined ->
+            %% why not just add it!?
             io:format("Unable to find #node_info record matching ~p~n", [Node]),
             {noreply, State};
         NI when is_record(NI, node_info) ->
-            Nodes3 = [ dxkit_net:update_node(NI, {NodeStatus, InfoList})
-                        | lists:filter(fun ignore_node/1, Nodes) ],
+            Nodes3 = [dxkit_net:update_node(NI, {NodeStatus, InfoList}) |
+                lists:filter(fun ignore_node/1, Nodes) ],
             {noreply, State#wstate{nodes=Nodes3}}
     end.
 
