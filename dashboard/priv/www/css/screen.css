@@ -1,0 +1,39 @@
+h1 {
+    color: #74b2e2;
+    font-family: 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;            
+}
+#navtabs {
+    border: none;
+    border-bottom: 1px solid #aed0ea;
+    position: relative;
+    background-color: transparent !important;
+}
+
+#navtabs { position: relative; padding: .2em; zoom: 1; } /* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
+#navtabs .ui-tabs-nav { margin: 0; padding: .2em .2em 0; }
+#navtabs .ui-tabs-nav li { list-style: none; float: left; position: relative; top: 1px; margin: 0 .2em 1px 0; border-bottom: 0 !important; padding: 0; white-space: nowrap; }
+#navtabs .ui-tabs-nav li a { float: left; padding: .5em 1em; text-decoration: none; }
+#navtabs .ui-tabs-nav li.ui-tabs-selected { margin-bottom: 0; padding-bottom: 1px; }
+#navtabs .ui-tabs-nav li.ui-tabs-selected a, .contentAdmin .ui-tabs .ui-tabs-nav li.ui-state-disabled a, .contentAdmin .ui-tabs .ui-tabs-nav li.ui-state-processing a { cursor: text; }
+#navtabs .ui-tabs-nav li a, .contentAdmin .ui-tabs.ui-tabs-collapsible .ui-tabs-nav li.ui-tabs-selected a { cursor: pointer; }
+
+div#navtabs ul.navtabs {
+    border:none;
+    height: 2.7em;
+}
+
+div#navtabs li.navtab {
+    font-weight:bold;
+    z-index:300;
+    margin-top:0.5em  !important;
+}
+
+div#navtabs li.navtab:hover,
+div#navtabs li.navtab:hover a{
+    border-color: #74b2e2;
+    background: #e4f1fb url(css/redmond/images/ui-bg_glass_100_e4f1fb_1x400.png) 50% 50% repeat-x;
+    font-weight: bold;
+    color: #0070a3;
+}
