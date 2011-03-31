@@ -47,10 +47,7 @@ start_link() ->
 init([]) ->
     Children = [
       {dxweb_http_server,
-        {dxweb_http_server, start_link, [
-          %% FIXME: setting debug=on should set all the others too..
-          []
-        ]},
+        {dxweb_http_server, start_link, [[]]},
         permanent, 5000, worker, [gen_server]},
       {erlxsl_port_controller,
         {erlxsl_port_controller, start_link, []},

@@ -30,11 +30,11 @@ if [ -z "$NAME_ARG" ]; then
 fi
 
 # Extract the target cookie
-COOKIE_ARG=`grep -e '-setcookie' $RUNNER_ETC_DIR/vm.args`
-if [ -z "$COOKIE_ARG" ]; then
-    echo "vm.args needs to have a -setcookie parameter."
-    exit 1
-fi
+#COOKIE_ARG=`grep -e '-setcookie' $RUNNER_ETC_DIR/vm.args`
+#if [ -z "$COOKIE_ARG" ]; then
+#    echo "vm.args needs to have a -setcookie parameter."
+#    exit 1
+#fi
 
 # Identify the script name
 SCRIPT=`basename $0`
