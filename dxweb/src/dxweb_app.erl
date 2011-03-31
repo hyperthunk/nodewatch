@@ -29,7 +29,7 @@
 %% @doc Dashboard OTP Application Module.
 %%
 %% -----------------------------------------------------------------------------
--module(dashboard_app).
+-module(dxweb_app).
 -behaviour(application).
 
 -export([start/0, start/2, stop/0, stop/1]).
