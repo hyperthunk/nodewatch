@@ -16,3 +16,4 @@ logs/*
 .DS_Store
 lib
 release/nodewatch/
+release/reltool.config
