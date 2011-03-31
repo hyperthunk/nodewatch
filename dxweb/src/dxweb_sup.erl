@@ -49,8 +49,5 @@ init([]) ->
       {dxweb_http_server,
         {dxweb_http_server, start_link, [[]]},
         permanent, 5000, worker, [gen_server]},
-      {erlxsl_port_controller,
-        {erlxsl_port_controller, start_link, []},
-        permanent, 5000, worker, [gen_server]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

@@ -1,6 +1,6 @@
 {sys, [
        {lib_dirs, [{{ erl_libs }}]},
-       {rel, "nodewatch", "1",
+       {rel, "nodewatch", "{{ version }}",
         [
          kernel,
          stdlib,
