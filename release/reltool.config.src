@@ -1,3 +1,4 @@
+{{ notice }}
 {sys, [
        {lib_dirs, [{{ erl_libs }}]},
        {rel, "nodewatch", "{{ version }}",
