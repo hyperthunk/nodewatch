@@ -1,3 +1,7 @@
+- look at riak_sysmon
+- sort out node generation
+    - app inclusion
+    - config to overlay
 - tracing support
     - come up with a mechanism that will set up a trace on a specific code path
         - use static analysis on code base to identify calls/casts

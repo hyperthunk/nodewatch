@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: OTP Application Callback Module
+%% Erlang System Monitoring Dashboard: Top Level Supervisor
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,34 +22,38 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc Dashboard OTP Application Module.
-%%
-%% -----------------------------------------------------------------------------
--module(dxweb_app).
--behaviour(application).
 
--export([start/0, start/2, stop/0, stop/1]).
+-module(dxweb_sup).
 
-%%%
-%%% Application API
-%%%
-start() ->
-    application:start(dxweb).
+-behaviour(supervisor).
 
-stop() ->
-    application:stop(dxweb).
+%% API
+-export([start_link/0]).
+-export([init/1]).
 
 %% ===================================================================
-%% Application callbacks
+%% API functions
 %% ===================================================================
 
-start(_StartType, _StartArgs) ->
-    dxweb_sup:start_link().
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-stop(_State) ->
-  ok.
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
 
+%% fastlog.config = [{debug, on}, {warn, on}, {info, on}, {error, on}]
+
+init([]) ->
+    Children = [
+      {dxweb_http_server,
+        {dxweb_http_server, start_link, [
+          %% FIXME: setting debug=on should set all the others too..
+          []
+        ]},
+        permanent, 5000, worker, [gen_server]},
+      {erlxsl_port_controller,
+        {erlxsl_port_controller, start_link, []},
+        permanent, 5000, worker, [gen_server]}
+    ],
+    {ok, {{one_for_one, 10, 10}, Children}}.
