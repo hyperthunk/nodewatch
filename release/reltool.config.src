@@ -6,8 +6,12 @@
          kernel,
          stdlib,
          sasl,
+         crypto,
+         riak_err,
+         fastlog,
          dxweb,
-         dxkit
+         dxkit,
+		 dxdb
         ]},
        {rel, "start_clean", "",
         [
@@ -28,6 +32,7 @@
 
 {overlay, [
            {mkdir, "log/sasl"},
+		   {mkdir, "etc/db"},
            {copy, "files/erl", "erts-{{erts_vsn}}/bin/erl"},
            {copy, "files/nodetool", "erts-{{erts_vsn}}/bin/nodetool"},
            {copy, "files/nodewatch", "bin/nodewatch"},

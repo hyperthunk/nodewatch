@@ -97,7 +97,10 @@ start_link(Options) ->
 %% @hidden
 %% initializes the server with the current "state of the world"
 init(Args) ->
-    Start = erlang:now(), End = Start, Timestamp = ?TS(Start, End),
+    %% Start = erlang:now(), 
+    %% FIXME: what were you for again?
+    %% End = Start, 
+    %% Timestamp = ?TS(Start, End),
     World = case lists:keytake(startup, 1, Args) of
         false -> [];
         {value, {startup, Startup}, _} ->
@@ -118,7 +121,7 @@ init(Args) ->
         Err -> {stop, Err}
     end.
 
-handle_call(Msg, {From, Tag}, State) ->
+handle_call(Msg, {_From, _Tag}, State) ->
 %%%
 %%%    ==> {reply, Reply, State}
 %%%        {reply, Reply, State, Timeout}
@@ -145,7 +148,7 @@ handle_info({nodedown, Node}, State) ->
     reset_state({nodedown, Node, []}, State);
 handle_info({nodedown, Node, InfoList}, State) ->
     reset_state({nodedown, Node, InfoList}, State);
-handle_info({timeout, TRef, refresh}, State) ->
+handle_info({timeout, _TRef, refresh}, State) ->
     Connections = [dxkit_net:connect(NI) || NI <- State#wstate.nodes],
     io:format("Connections: ~p~n", [Connections]),
     refresh_timer(State#wstate.options),
@@ -154,10 +157,10 @@ handle_info(Info, State) ->
     io:format("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
-terminate(Reason, State) ->
+terminate(_Reason, _State) ->
     ok.
 
-code_change(OldVsn, State, Extra) ->
+code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% -----------------------------------------------------------------------------
@@ -191,7 +194,7 @@ refresh_timer(Config) ->
     end.
 
 ignore_node(Node) ->
-    fun(N) -> not(Node#node_info.node_name == Node) end.
+    fun(N) -> not(N#node_info.node_name == Node) end.
 
 match_node(Node) ->
     fun(E) -> (E#node_info.node_name == Node) end.

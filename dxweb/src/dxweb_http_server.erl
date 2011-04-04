@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: OTP Application Callback Module
+%% Erlang System Monitoring Dashboard: Supervisor for HTTP Services
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,32 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc Dashboard OTP Application Module.
-%%
-%% -----------------------------------------------------------------------------
--module(dxweb_app).
+
+-module(dxweb_http_server).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(application).
+-behaviour(supervisor).
 
--export([start/0, start/2, stop/0, stop/1]).
-
-%%%
-%%% Application API
-%%%
-start() ->
-    dxdb:prepare_start(),
-    appstart:start(dxweb).
-
-stop() ->
-    application:stop(dxweb).
+-export([start_link/1]).
+-export([init/1]).
 
 %% ===================================================================
-%% Application callbacks
+%% API functions
 %% ===================================================================
 
-start(_StartType, StartArgs) ->
-    dxweb_sup:start_link(StartArgs).
+start_link(StartArgs) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
 
-stop(_State) ->
-  ok.
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
 
+init(StartArgs) ->
+    Children = [
+        {dxweb_http_handler,
+            {dxweb_http_handler, start_link, [StartArgs]},
+            temporary, 5000, worker, [gen_server]},
+        {dxweb_websocket_registry,
+            {dxweb_websocket_registry, start_link, []},
+            temporary, 5000, worker, [gen_server]}
+    ],
+    {ok, {{one_for_all, 10, 10}, Children}}.

@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: OTP Application Callback Module
+%% Erlang System Monitoring Database: Top Level Supervisor
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,35 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc Dashboard OTP Application Module.
-%%
-%% -----------------------------------------------------------------------------
--module(dxweb_app).
+
+-module(dxdb_sup).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(application).
+-behaviour(supervisor).
 
--export([start/0, start/2, stop/0, stop/1]).
+-include("../include/types.hrl").
 
-%%%
-%%% Application API
-%%%
-start() ->
-    dxdb:prepare_start(),
-    appstart:start(dxweb).
-
-stop() ->
-    application:stop(dxweb).
+%% API
+-export([start_link/0]).
+-export([init/1]).
 
 %% ===================================================================
-%% Application callbacks
+%% API functions
 %% ===================================================================
 
-start(_StartType, StartArgs) ->
-    dxweb_sup:start_link(StartArgs).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-stop(_State) ->
-  ok.
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
 
+init([]) ->
+    Children = [
+        {dxdb_schema,
+            {dxdb_schema, start_link, []},
+            temporary, 5000, worker, [gen_server]},
+        {dxdb_event_handler, 
+            {gen_event, start_link, [{local, dxdb_event_handler}]},
+            transient, 5000, worker, gen_event}
+    ],
+    {ok, {{one_for_one, 10, 10}, Children}}.

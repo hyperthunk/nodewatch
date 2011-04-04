@@ -1,8 +1,8 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: OTP Application Callback Module
+%% Erlang System Monitoring Dashboard: Utilities Module
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -21,37 +21,6 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc Dashboard OTP Application Module.
-%%
-%% -----------------------------------------------------------------------------
--module(dxweb_app).
--author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(application).
+%% ------------------------------------------------------------------------------
 
--export([start/0, start/2, stop/0, stop/1]).
-
-%%%
-%%% Application API
-%%%
-start() ->
-    dxdb:prepare_start(),
-    appstart:start(dxweb).
-
-stop() ->
-    application:stop(dxweb).
-
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
-
-start(_StartType, StartArgs) ->
-    dxweb_sup:start_link(StartArgs).
-
-stop(_State) ->
-  ok.
-
+-record (users, {username, email_address, password}).

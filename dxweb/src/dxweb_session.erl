@@ -1,8 +1,8 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: OTP Application Callback Module
+%% Erlang System Monitoring Dashboard: 
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -21,37 +21,31 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
+%% ------------------------------------------------------------------------------
 %%
-%% @doc Dashboard OTP Application Module.
+%% @doc 
 %%
-%% -----------------------------------------------------------------------------
--module(dxweb_app).
+%% ------------------------------------------------------------------------------
+
+-module(dxweb_session).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(application).
 
--export([start/0, start/2, stop/0, stop/1]).
+-export([create/1]).
 
-%%%
-%%% Application API
-%%%
-start() ->
-    dxdb:prepare_start(),
-    appstart:start(dxweb).
+create(Req) ->
+    case validate_user(auth_credentials(Req)) of
+        true ->
+            UUID = dxweb_util:make_uuid(),
+            {registered, UUID} = dxweb_websocket_registry:register(UUID),
+            UUID;
+        _NoAuth -> 
+            invalid
+    end.
 
-stop() ->
-    application:stop(dxweb).
+auth_credentials(Req) ->
+    PostData = Req:parse_post(),
+    {proplists:get_value(username, PostData), 
+     proplists:get_value(password, PostData)}.
 
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
-
-start(_StartType, StartArgs) ->
-    dxweb_sup:start_link(StartArgs).
-
-stop(_State) ->
-  ok.
-
+validate_user({UserName, Password}) ->
+    dxdb:check_user(UserName, Password).

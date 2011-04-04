@@ -23,13 +23,13 @@
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
 
--type timestamp()  :: {integer(), integer(), integer()}. %% see erlang:now/0
-
--type conn_time()  :: {number(), timestamp()}.
-
--type nodeinfo()   :: [{atom(), term()}].
-
--type nodestatus() :: unknown | {nodeup | nodedown, nodeinfo()}.
+-type timestamp()       :: {integer(), integer(), integer()}. %% see erlang:now/0
+-type conn_time()       :: {number(), timestamp()}.
+-type nodeinfo()        :: [{atom(), term()}].
+-type nodestatus()      :: unknown | {nodeup | nodedown, nodeinfo()}.
+-type mode()            :: active | passive.
+-type sensor()          :: system | network | process.
+-type username()        :: string().
 
 -record(node_info, {
     node_name                   :: node(),
@@ -38,6 +38,23 @@
     downtime    = {0,{0,0,0}}   :: conn_time()
 }).
 
+%% Represents a subscription - these are *only* stored against a specific user
+-record(subscription, {
+    id                  :: integer(),
+    user                :: username(),
+    mode    = passive   :: mode(),
+    sensor  = undefined :: sensor()
+}).
+
+%% User is an aggregate root in our domain model
+-record(user, {
+    name                :: username(),
+    password            :: string()
+}).
+
 -define(TS(Start, End), {?DIFF_SEC(Start, End), End}).
 -define(TS_EMPTY, {0,0,0}).
 -define(DIFF_SEC(T1,T2), ((timer:now_diff(T2, T1) * 0.001) / 1000)).
+
+%% The named event handler registered by dxdb_sup on startup.
+-define(EVENT_HANDLER, dxdb_event_handler).

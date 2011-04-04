@@ -22,32 +22,46 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
+%%
+%% Our supervision tree covers three main areas:
+%%    1. HTTP Infrastructure
+%%    2. Gathering Performance Counters from Eper
+%%    3. SubSystem Event Notification Bridge
+%%
+%% The HTTP supervision tree is maintained by the virtual dxweb_http_server,
+%% which is itself a supervisor. The Eper collector and associated processes
+%% are hosted seperately by a tree of gen_servers. Finally, the notification
+%% bridge handles the pub/sub between the collected performance counters and
+%% the HTTP *sessions* maintained for each (browser or other type of ) client.
+%%
+%% -----------------------------------------------------------------------------
 
 -module(dxweb_sup).
-
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+start_link(StartArgs) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
-%% fastlog.config = [{debug, on}, {warn, on}, {info, on}, {error, on}]
-
-init([]) ->
+init(StartArgs) ->
     Children = [
-      {dxweb_http_server,
-        {dxweb_http_server, start_link, [[]]},
-        permanent, 5000, worker, [gen_server]}
+        {dxweb_http_server,
+            {dxweb_http_server, start_link,
+                [proplists:get_value(webconfig, StartArgs)]},
+            permanent, 5000, supervisor, [supervisor]},
+        {dxdb,
+            {dxdb_sup, start_link, []},
+            permanent, 5000, supervisor, [supervisor]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.
