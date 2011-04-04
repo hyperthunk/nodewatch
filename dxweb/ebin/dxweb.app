@@ -1,9 +1,8 @@
 {application,dxweb,
  [{description,"Diagnostic and Monitoring Web Dashboard"},
   {vsn,"0.0.1"},
-  {mod,{dxweb_app,[]}},
-  {modules,[dxweb_app, 
-			dxweb_sup, 
+  {mod,{appstart_loader,[]}},
+  {modules,[dxweb_sup, 
 			dxweb_http_handler, 
 			dxweb_http_server, 
 			dxweb_util, 
@@ -23,14 +22,11 @@
     %% fastlog for a consistent (and simple) logging api
     fastlog,
     %% we need to start dxkit in order to use various sensors
-    dxkit
-    %% FIXME: finish off this update to appstart
-    %% dxdb startup is controlled by custom configuration (see below)
-    %% dxdb
+    dxkit,
+    dxdb
   ]},
   {env,[
-        %% TODO: actually get appstart to process this.....
-        {appstart, [
-            {dxdb, [{start, {dxdb, prepare_start, []}}]}
-        ]}
+    {appstart,[
+        {startup, [dxweb_sup, start_link]}
+    ]}
   ]}]}.

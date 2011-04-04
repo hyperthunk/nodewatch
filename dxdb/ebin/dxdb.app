@@ -1,7 +1,8 @@
 {application,dxdb,
  [{description,"System Monitoring Database"},
   {vsn,"0.0.1"},
-  {modules,[dxdb_schema, dxdb_sup, dxdb]},
+  {mod,{appstart_loader,[]}},
+  {modules,[dxdb_app, dxdb_schema, dxdb_sup, dxdb]},
   {registered,[dxdb_schema]},
   {applications,[
     kernel,
@@ -10,7 +11,10 @@
     sasl,
     riak_err,
     fastlog
-	%% NB: we DO NOT start mnesia using appstart - 
-	%%  rather we do this manually in dxdb:prepare_start/0
+	%% NB: we DO NOT start mnesia using appstart
   ]},
-  {env,[]}]}.
+  {env,[
+    {appstart,[
+        {startup, [dxdb_sup, full_start]}
+    ]}
+  ]}]}.

@@ -30,12 +30,17 @@
 -include("../include/types.hrl").
 
 %% API
--export([start_link/0]).
+-export([full_start/0, start_link/0]).
 -export([init/1]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+full_start() ->
+    mnesia:create_schema([node()]),
+    application:start(mnesia, permanent),
+    start_link().
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -51,6 +56,6 @@ init([]) ->
             temporary, 5000, worker, [gen_server]},
         {dxdb_event_handler, 
             {gen_event, start_link, [{local, dxdb_event_handler}]},
-            transient, 5000, worker, gen_event}
+            temporary, 5000, worker, dynamic}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

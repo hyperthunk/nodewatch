@@ -9,9 +9,9 @@
          crypto,
          riak_err,
          fastlog,
-         dxweb,
+         dxdb,
          dxkit,
-		 dxdb
+         dxweb
         ]},
        {rel, "start_clean", "",
         [

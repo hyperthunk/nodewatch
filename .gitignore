@@ -17,3 +17,4 @@ logs/*
 lib
 release/nodewatch/
 release/reltool.config
+lib/

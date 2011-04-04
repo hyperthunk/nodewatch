@@ -169,16 +169,15 @@ code_change(_OldVsn, State, _Extra) ->
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Nodes}=State) ->
     io:format("node '~p' status change: ~p~n", [Node, NodeStatus]),
-    Match = dxkit_utils:find(match_node(Node), undefined, Nodes),
-    case Match of
-        undefined ->
-            %% why not just add it!?
-            io:format("Unable to find #node_info record matching ~p~n", [Node]),
-            {noreply, State};
-        NI when is_record(NI, node_info) ->
+    case [N || N <- Nodes, N#node_info.node_name == Node] of
+        [NI] when is_record(NI, node_info) ->
             Nodes3 = [dxkit_net:update_node(NI, {NodeStatus, InfoList}) |
                 lists:filter(fun ignore_node/1, Nodes) ],
-            {noreply, State#wstate{nodes=Nodes3}}
+            {noreply, State#wstate{nodes=Nodes3}};
+        _ ->
+            %% why not just add it!?
+            io:format("Unable to find #node_info record matching ~p~n", [Node]),
+            {noreply, State}
     end.
 
 refresh_timer(Config) ->
@@ -195,6 +194,3 @@ refresh_timer(Config) ->
 
 ignore_node(Node) ->
     fun(N) -> not(N#node_info.node_name == Node) end.
-
-match_node(Node) ->
-    fun(E) -> (E#node_info.node_name == Node) end.

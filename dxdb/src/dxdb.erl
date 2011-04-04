@@ -31,21 +31,11 @@
 %% -----------------------------------------------------------------------------
 -module(dxdb).
 -author('Tim Watson <watson.timothy@gmail.com>').
--export([prepare_start/0
-        ,add_user/2
+-export([add_user/2
         ,check_user/2
         ,remove_subscriptions/1]).
 
 -include("../include/types.hrl").
-
-%%
-%% @doc Starts the dxdb application dependencies, but not the supervision tree.
-%%
-prepare_start() ->
-    %% FIXME: upgrade appstart to deal with this noise.....
-    appstart:start_deps(dxdb),
-    mnesia:create_schema([node()]),
-    application:start(mnesia, permanent).
 
 %%
 %% @doc Adds a user to the database.
