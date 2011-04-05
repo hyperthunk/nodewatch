@@ -41,6 +41,10 @@ main(_) ->
                                 {erts_vsn, erlang:system_info(version)},
                                 {erl_libs, lib_dirs()},
                                 {app_deps, incl_apps()}]),
+    setup_gen:run([{conf, "nodewatch.conf"},
+                   {outdir,"release/setup"},
+                   {name,"nodewatch"},
+                   {install, true}]),
     ok.
 
 vsn() ->

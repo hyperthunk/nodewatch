@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-
-rebar -C depends.config get-deps compile

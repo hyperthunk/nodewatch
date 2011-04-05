@@ -64,8 +64,9 @@ stop() ->
 %% -----------------------------------------------------------------------------
 
 init(_) ->
-    ensure_schema(),
-    [mnesia:subscribe({table, T, simple}) || T <- [user, subscription]],
+    Tabs = [{user, record_info(fields, user)}, 
+            {subscription, record_info(fields, subscription)}],
+    [mnesia:subscribe({table, T, simple}) || {T, _} <- Tabs],
     {ok, []}.
 
 %% @hidden
@@ -95,19 +96,3 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-%% Internal API
-
-ensure_schema(Tabs) ->
-    [ensure_table(T) || T <- Tabs].
-
-ensure_table(Name) ->
-    Def = [{type, ordered_set},
-           {disc_copies, [node()]},
-           {attributes, record_info(fields, Name)}],
-    try mnesia:table_info(Name, type),
-        ok
-    catch
-        _:_ ->
-            mnesia:create_table(Name, Def)
-    end,
-    mnesia:wait_for_tables([Name], infinity).

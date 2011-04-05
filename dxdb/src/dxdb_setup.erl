@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Network Admin
+%% Erlang System Monitoring Database: Top Level Supervisor
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,14 +22,26 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: May 2010
-%%
-%% @doc General Purpose Utilities.
-%%
-%% -----------------------------------------------------------------------------
 
--module(dxkit_utils).
--compile(export_all).
+-module(dxdb_setup).
+-author('Tim Watson <watson.timothy@gmail.com>').
+-include("../include/types.hrl").
 
+%% API
+-export([create_db/0, create_schema/0]).
+
+create_db() ->
+    mnesia:create_schema([node()]),
+    application:start(mnesia, permanent).
+
+create_schema() ->
+    Tabs = [{user, record_info(fields, user)}, 
+            {subscription, record_info(fields, subscription)}],
+    [create_table(T, Attrs) || {T, Attrs} <- Tabs].
+
+create_table(Name, Attrs) ->
+    Def = [{type, ordered_set},
+           {disc_copies, [node()]},
+           {attributes, Attrs}],
+    mnesia:create_table(Name, Def),
+    mnesia:wait_for_tables([Name], infinity).

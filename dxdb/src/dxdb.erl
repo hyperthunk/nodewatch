@@ -33,8 +33,9 @@
 -author('Tim Watson <watson.timothy@gmail.com>').
 -export([add_user/2
         ,check_user/2
-        ,remove_subscriptions/1]).
+        ,subscribe_user/3]).
 
+-include_lib("stdlib/include/qlc.hrl").
 -include("../include/types.hrl").
 
 %%
@@ -42,7 +43,7 @@
 %%
 -spec(add_user(username(), string()) -> ok | {error, term()}).
 add_user(Name, Password) ->
-    <Digest:160> = crypto:sha(Password),
+    <<Digest:160>> = crypto:sha(Password),
     write(#user{name=Name, password=Digest}).
 
 subscribe_user(User, Sensor, Mode) ->
@@ -53,11 +54,11 @@ subscribe_user(User, Sensor, Mode) ->
                 true ->  1;
                 false -> mnesia:last(subscription)
             end,
-            mnesia:write(#subscription{id = 1,  
+            mnesia:write(#subscription{id = ID,  
                                        user = User,
                                        mode = Mode,
                                        sensor = Sensor})
-        end
+        end,
     transaction(Write).
 
 %%
@@ -65,7 +66,7 @@ subscribe_user(User, Sensor, Mode) ->
 %%
 -spec(check_user(username(), string()) -> true | false).
 check_user(Name, Password) ->
-    <Digest:160> = crypto:sha(Password),
+    <<Digest:160>> = crypto:sha(Password),
     Found = qlc:q([X#user.name || X <- mnesia:table(user), 
                                   X#user.name == Name, 
                                   X#user.password == Digest]),
@@ -74,10 +75,10 @@ check_user(Name, Password) ->
 write(Item) ->
     transaction(fun() -> mnesia:write(Item) end).
 
-transaction(Fun)
+transaction(Fun) ->
     case mnesia:transaction(Fun) of
         {atomic, _} ->
             ok;
         {aborted, Reason} ->
             {error, Reason}
-    end
+    end.

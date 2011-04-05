@@ -45,9 +45,9 @@ init(StartArgs) ->
     Children = [
         {dxweb_http_handler,
             {dxweb_http_handler, start_link, [StartArgs]},
-            temporary, 5000, worker, [gen_server]},
+            permanent, 5000, worker, [gen_server]},
         {dxweb_websocket_registry,
             {dxweb_websocket_registry, start_link, []},
-            temporary, 5000, worker, [gen_server]}
+            permanent, 5000, worker, [gen_server]}
     ],
     {ok, {{one_for_all, 10, 10}, Children}}.

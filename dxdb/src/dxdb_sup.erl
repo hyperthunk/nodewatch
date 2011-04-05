@@ -38,7 +38,7 @@
 %% ===================================================================
 
 full_start() ->
-    mnesia:create_schema([node()]),
+    %% TODO: do this in appstart
     application:start(mnesia, permanent),
     start_link().
 

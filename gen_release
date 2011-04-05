@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+export ERL_LIBS="`pwd`:lib"
+echo "fetching all dependencies"
+rebar -C depends.config get-deps
+echo "compiling sources"
+rebar compile
+echo "generating release"
+rebar generate skip_deps=true
