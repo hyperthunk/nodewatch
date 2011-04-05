@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-erl -sys install -boot install
+erl -sys etc/setup/install -boot etc/setup/install -config etc/app.config

@@ -33,13 +33,12 @@
 {overlay, [
            {mkdir, "log/sasl"},
 		   {mkdir, "etc/db"},
-		   {mkdir, "etc/install"},
+		   {mkdir, "etc/setup"},
            {copy, "files/erl", "erts-{{erts_vsn}}/bin/erl"},
            {copy, "files/nodetool", "erts-{{erts_vsn}}/bin/nodetool"},
            {copy, "files/nodewatch", "bin/nodewatch"},
            {copy, "files/app.config", "etc/app.config"},
            {copy, "files/vm.args", "etc/vm.args"},
-           {copy, "setup/sys.config", "etc/install/sys.config"},
-           {copy, "setup/install.*", "etc/install/"},
-           {copy, "files/setup.sh", "etc/install/setup.sh"}
+           {copy, "setup/install.*", "etc/setup/"},
+           {copy, "files/setup.sh", "setup.sh"}
            ]}.

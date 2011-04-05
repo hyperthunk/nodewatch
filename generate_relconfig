@@ -36,15 +36,18 @@ main(_) ->
     Dest = filename:absname(filename:join(["release", "reltool.config"])),
     Src = Dest ++ ".src",
     erlydtl:compile(Src, ?TEMPLATE_MOD),
+    Vsn = vsn(),
     write(Dest, ?TEMPLATE_MOD, [{notice, ?NOTICE},
-                                {version, vsn()},
+                                {version, Vsn},
                                 {erts_vsn, erlang:system_info(version)},
                                 {erl_libs, lib_dirs()},
                                 {app_deps, incl_apps()}]),
     setup_gen:run([{conf, "nodewatch.conf"},
-                   {outdir,"release/setup"},
-                   {name,"nodewatch"},
-                   {install, true}]),
+                   {outdir, "release/setup"},
+                   {name, "nodewatch"},
+                   {install, true},
+                   {vsn, Vsn},
+                   {sys, "release/files/app.config"}]),
     ok.
 
 vsn() ->
