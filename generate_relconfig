@@ -42,6 +42,7 @@ main(_) ->
                                 {erts_vsn, erlang:system_info(version)},
                                 {erl_libs, lib_dirs()},
                                 {app_deps, incl_apps()}]),
+    io:fwrite("Generating installer/setup configuration...~n"),
     setup_gen:run([{conf, "nodewatch.conf"},
                    {outdir, "release/setup"},
                    {name, "nodewatch"},

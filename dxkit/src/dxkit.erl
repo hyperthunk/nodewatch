@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Utils
+%% Erlang System Monitoring Tools: API Module
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -26,10 +26,18 @@
 %% @copyright (c) Tim Watson, 2010
 %% @since: May 2010
 %%
-%% @doc General Purpose Utilities.
+%% @doc DxKit API Module.
 %%
 %% -----------------------------------------------------------------------------
 
--module(dxkit_utils).
--compile(export_all).
+-module(dxkit).
+-export([start_dev/0]).
 
+%%
+%% @doc Starts the dxkit OTP application in dev mode.
+%%
+start_dev() ->
+    appstart:start_deps(dxkit),
+    fastlog:set_level(debug),
+    application:start(dxkit),
+    ok.

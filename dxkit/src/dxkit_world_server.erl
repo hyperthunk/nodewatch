@@ -50,12 +50,11 @@
 -include("../include/types.hrl").
 
 -record(wstate, {
+    start_ts        :: timestamp(),
     options  = []   :: [{atom(), term()}],
     nodes    = []   :: [#node_info{}]
 }).
 
--type(interval()        :: integer()).
--type(unit_of_measure() :: seconds | minutes | hours | milliseconds).
 -type(server_option()   :: {refresh, {interval(), unit_of_measure()}} |
                            {startup, {scan, all}} |
                            {nodes, [node()]}).
@@ -81,14 +80,20 @@ start() ->
 %%
 -spec(start/1 :: (Options::[server_option()]) -> term()).
 start(Options) ->
-    gen_server2:start({local, ?MODULE}, ?MODULE, Options, []).
+    startup(gen_server2:start({local, ?MODULE}, ?MODULE, Options, [])).
 
 %%
 %% @doc Starts the server with the supplied configuration.
 %%
 -spec(start_link/1 :: (Options::[server_option()]) -> term()).
 start_link(Options) ->
-    gen_server2:start_link({local, ?MODULE}, ?MODULE, Options, []).
+    startup(gen_server2:start_link({local, ?MODULE}, ?MODULE, Options, [])).
+
+startup({ok, Pid}) ->
+    ok = gen_server:cast(Pid, scan),
+    Pid;
+startup(Other) ->
+    Other.
 
 %% -----------------------------------------------------------------------------
 %% gen_server2 callbacks
@@ -97,30 +102,36 @@ start_link(Options) ->
 %% @hidden
 %% initializes the server with the current "state of the world"
 init(Args) ->
-    %% Start = erlang:now(), 
     %% FIXME: what were you for again?
+    %% Start = erlang:now(), 
     %% End = Start, 
     %% Timestamp = ?TS(Start, End),
     World = case lists:keytake(startup, 1, Args) of
-        false -> [];
-        {value, {startup, Startup}, _} ->
-            case lists:keytake(scan, 1, Startup) of
-                false -> [];
-                _     -> net_adm:world()
-            end
+        {value, {startup, {scan, all}}, _} ->
+            net_adm:world();
+        _ ->
+            []
     end,
+    io:format("World = ~p~n", [World]),
     {Nodes, Config} = case lists:keytake(nodes, 1, Args) of
         false -> {World, Args};
         {value, {nodes, N}, Cfg} -> {N ++ World, Cfg}
     end,
     NodeList = [dxkit_net:connect(Node) || Node <- Nodes, Node =/= node()],
-    State = #wstate{options=Config, nodes=NodeList},
+
+    State = #wstate{start_ts=erlang:now(), options=Config, nodes=NodeList},
     case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
         ok  ->
-            refresh_timer(Config), {ok, State};
-        Err -> {stop, Err}
+            refresh_timer(Config), 
+            io:fwrite("ok we're good to go!~n"),
+            {ok, State};
+        Err ->
+            io:format("we're stopping because of ~p!~n", [Err]), 
+            {stop, Err}
     end.
 
+handle_call(nodes, {_From, _Tag}, #wstate{nodes=Nodes}=State) ->
+    {reply, Nodes, State};
 handle_call(Msg, {_From, _Tag}, State) ->
 %%%
 %%%    ==> {reply, Reply, State}
@@ -129,7 +140,7 @@ handle_call(Msg, {_From, _Tag}, State) ->
 %%%        {noreply, State, Timeout}
 %%%        {stop, Reason, Reply, State}
 %%%              Reason = normal | shutdown | Term terminate(State) is called
-    io:format("In ~p `Call': ~p~n", [self(), Msg]),
+    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
     {reply, State, State}.
 
 handle_cast(Msg, State) ->
@@ -137,7 +148,7 @@ handle_cast(Msg, State) ->
 %%%        {noreply, State, Timeout}
 %%%        {stop, Reason, State}
 %%%              Reason = normal | shutdown | Term terminate(State) is called
-    io:format("In ~p `Cast': ~p~n", [self(), Msg]),
+    fastlog:debug("In ~p `Cast': ~p~n", [self(), Msg]),
     {noreply, State}.
 
 handle_info({nodeup, Node}, State) ->
@@ -150,11 +161,11 @@ handle_info({nodedown, Node, InfoList}, State) ->
     reset_state({nodedown, Node, InfoList}, State);
 handle_info({timeout, _TRef, refresh}, State) ->
     Connections = [dxkit_net:connect(NI) || NI <- State#wstate.nodes],
-    io:format("Connections: ~p~n", [Connections]),
+    fastlog:debug("Connections: ~p~n", [Connections]),
     refresh_timer(State#wstate.options),
     {noreply, State};
 handle_info(Info, State) ->
-    io:format("node ~p unknown status message; state=~p", [Info, State]),
+    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -168,16 +179,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% -----------------------------------------------------------------------------
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Nodes}=State) ->
-    io:format("node '~p' status change: ~p~n", [Node, NodeStatus]),
+    fastlog:debug("node '~p' status change: ~p~n", [Node, NodeStatus]),
     case [N || N <- Nodes, N#node_info.node_name == Node] of
         [NI] when is_record(NI, node_info) ->
             Nodes3 = [dxkit_net:update_node(NI, {NodeStatus, InfoList}) |
-                lists:filter(fun ignore_node/1, Nodes) ],
+                lists:filter(fun ignore_node/1, Nodes)],
             {noreply, State#wstate{nodes=Nodes3}};
-        _ ->
-            %% why not just add it!?
-            io:format("Unable to find #node_info record matching ~p~n", [Node]),
-            {noreply, State}
+        [] ->
+            {noreply, State#wstate{nodes=[dxkit_net:connect(Node)|Nodes]}}
     end.
 
 refresh_timer(Config) ->
@@ -187,10 +196,10 @@ refresh_timer(Config) ->
                 milliseconds -> Int;
                 _ -> apply(timer, Uom, [Int])
             end,
-            io:format("Starting refresh timer with a ~p ms interval.~n", [Timeout]),
+            fastlog:debug("Starting refresh timer with a ~p ms interval.~n", [Timeout]),
             erlang:start_timer(Timeout, ?MODULE, refresh);
         _ -> ignored
     end.
 
 ignore_node(Node) ->
-    fun(N) -> not(N#node_info.node_name == Node) end.
+    fun(N) -> N#node_info.node_name =/= Node end.

@@ -35,16 +35,19 @@
 %% ===================================================================
 
 start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init(StartArgs) ->
+    io:fwrite("dxkit_sup: StartArgs = ~p~n", [StartArgs]),
+    WorldArgs = proplists:get_value(world, StartArgs, []),
+    io:fwrite("WorldArgs = ~p~n", [WorldArgs]),
     Children = [
         {dxkit_world_server,
-            {dxkit_world_server, start_link, [StartArgs]},
+            {dxkit_world_server, start_link, [WorldArgs]},
              permanent, 5000, worker, [gen_server]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

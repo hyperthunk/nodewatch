@@ -46,6 +46,10 @@ add_user(Name, Password) ->
     <<Digest:160>> = crypto:sha(Password),
     write(#user{name=Name, password=Digest}).
 
+%%
+%% @doc Subscribe a user to a specific set of events, using
+%% the specified mode (active or passive)
+%%
 subscribe_user(User, Sensor, Mode) ->
     Write = 
         fun() ->

@@ -23,13 +23,15 @@
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
 
--type timestamp()       :: {integer(), integer(), integer()}. %% see erlang:now/0
--type conn_time()       :: {number(), timestamp()}.
--type nodeinfo()        :: [{atom(), term()}].
--type nodestatus()      :: unknown | {nodeup | nodedown, nodeinfo()}.
--type mode()            :: active | passive.
--type sensor()          :: system | network | process.
--type username()        :: string().
+-type(timestamp()       :: {integer(), integer(), integer()}). %% see erlang:now/0
+-type(conn_time()       :: {number(), timestamp()}).
+-type(interval()        :: integer()).
+-type(unit_of_measure() :: seconds | minutes | hours | milliseconds).
+-type(nodeinfo()        :: [{atom(), term()}]).
+-type(nodestatus()      :: unknown | {nodeup | nodedown, nodeinfo()}).
+-type(mode()            :: active | passive).
+-type(sensor()          :: atom()).
+-type(username()        :: string()).
 
 -record(node_info, {
     node_name                   :: node(),
@@ -57,4 +59,4 @@
 -define(DIFF_SEC(T1,T2), ((timer:now_diff(T2, T1) * 0.001) / 1000)).
 
 %% The named event handler registered by dxdb_sup on startup.
--define(EVENT_HANDLER, dxdb_event_handler).
+-define(DB_EVENT, dxdb_event_handler).

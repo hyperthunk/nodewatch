@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+
+## startup a development server
+
+RUNNER_SCRIPT_DIR=$(cd ${0%/*} && pwd)
+REL_DIR="$RUNNER_SCRIPT_DIR/release"
+DEV_DIR="$RUNNER_SCRIPT_DIR/dev"
+START_ARGS="-sys $REL_DIR/setup/start -boot $REL_DIR/setup/start -config $REL_DIR/setup/sys.config"
+
+if [ ! -d "$DEV_DIR" ]; then
+    echo "Setting up development environment for first time..."
+    mkdir -p "$DEV_DIR/etc/db"
+    mkdir -p "$DEV_DIR/log"
+    SYS="-sys $REL_DIR/setup/install"
+    BOOT="-boot $REL_DIR/setup/install"
+    CONF="-config $REL_DIR/files/app.config"
+    cd "$DEV_DIR"
+    eval "erl $SYS $BOOT -embedded $CONF"
+fi
+
+for var in "$@"
+do
+    case "$var" in
+        --help)
+            echo "$0 [options]"
+            echo "--kit = start with dxkit"
+            echo "--web = start with dxkit + webapp"
+            exit 0
+            ;;
+        --kit)
+            START_ARGS="$START_ARGS -eval 'dxkit:start_dev()'"
+            ;;
+        --web)
+            START_ARGS="$START_ARGS"
+            ;;
+        --attach)
+            ATTACHED=""
+            ;;
+        *)
+            echo "Ignoring $var"
+    esac
+done
+
+eval "erl -sname nodewatch-dev -pa `pwd` $START_ARGS"
+

@@ -30,15 +30,17 @@
 
 {target_dir, "nodewatch"}.
 
+%%{overlay_vars, []}.
+
 {overlay, [
-           {mkdir, "log/sasl"},
-		   {mkdir, "etc/db"},
-		   {mkdir, "etc/setup"},
-           {copy, "files/erl", "erts-{{erts_vsn}}/bin/erl"},
-           {copy, "files/nodetool", "erts-{{erts_vsn}}/bin/nodetool"},
-           {copy, "files/nodewatch", "bin/nodewatch"},
-           {copy, "files/app.config", "etc/app.config"},
-           {copy, "files/vm.args", "etc/vm.args"},
-           {copy, "setup/install.*", "etc/setup/"},
-           {copy, "files/setup.sh", "setup.sh"}
-           ]}.
+   {mkdir, "log/sasl"},
+   {mkdir, "etc/db"},
+   {mkdir, "etc/setup"},
+   {copy, "files/erl", "erts-{{erts_vsn}}/bin/erl"},
+   {copy, "files/nodetool", "erts-{{erts_vsn}}/bin/nodetool"},
+   {copy, "files/nodewatch", "bin/nodewatch"},
+   {copy, "files/app.config", "etc/app.config"},
+   {copy, "files/vm.args", "etc/vm.args"},
+   {copy, "setup/install.*", "etc/setup/"},
+   {copy, "files/setup.sh", "setup.sh"}
+]}.

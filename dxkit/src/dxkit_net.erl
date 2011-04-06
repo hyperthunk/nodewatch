@@ -42,13 +42,13 @@
 -spec(connect/1 :: (Node::atom()) -> #node_info{};
                    (Node::#node_info{}) -> #node_info{}).
 connect(Node) when is_atom(Node) ->
-    io:format("Connecting to node '~p'~n", [Node]),
+    fastlog:debug("Connecting to node '~p'~n", [Node]),
     Status = case net_kernel:connect_node(Node) of
         ignored -> unknown;
         false   -> {nodedown, []};
         true    -> {nodeup, []}
     end,
-    io:format("Node '~p' status: ~p~n", [Node, Status]),
+    fastlog:debug("Node '~p' status: ~p~n", [Node, Status]),
     update_node(Node, Status);
 connect(#node_info{node_name=Name}=Node) ->
     NI = connect(Name),
