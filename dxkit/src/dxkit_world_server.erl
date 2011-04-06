@@ -34,8 +34,8 @@
 
 -module(dxkit_world_server).
 -author('Tim Watson <watson.timothy@gmail.com>').
-
 -behavior(gen_server2).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -48,6 +48,7 @@
         ,start_link/1]).
 
 -include("../include/types.hrl").
+-include("dxkit.hrl").
 
 -record(wstate, {
     start_ts        :: timestamp(),
@@ -102,31 +103,17 @@ startup(Other) ->
 %% @hidden
 %% initializes the server with the current "state of the world"
 init(Args) ->
-    %% FIXME: what were you for again?
-    %% Start = erlang:now(), 
-    %% End = Start, 
-    %% Timestamp = ?TS(Start, End),
-    World = case lists:keytake(startup, 1, Args) of
-        {value, {startup, {scan, all}}, _} ->
-            net_adm:world();
-        _ ->
-            []
-    end,
-    io:format("World = ~p~n", [World]),
-    {Nodes, Config} = case lists:keytake(nodes, 1, Args) of
-        false -> {World, Args};
-        {value, {nodes, N}, Cfg} -> {N ++ World, Cfg}
-    end,
-    NodeList = [dxkit_net:connect(Node) || Node <- Nodes, Node =/= node()],
-
-    State = #wstate{start_ts=erlang:now(), options=Config, nodes=NodeList},
+    process_flag(trap_exit, true),
+    Start = erlang:now(), End = Start,
+    Timestamp = ?TS(Start, End),
+    State = #wstate{start_ts=Timestamp, options=Args, nodes=[]},
     case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
         ok  ->
-            refresh_timer(Config), 
+            refresh_timer(Args),
             io:fwrite("ok we're good to go!~n"),
             {ok, State};
         Err ->
-            io:format("we're stopping because of ~p!~n", [Err]), 
+            io:format("we're stopping because of ~p!~n", [Err]),
             {stop, Err}
     end.
 
@@ -143,6 +130,21 @@ handle_call(Msg, {_From, _Tag}, State) ->
     fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
     {reply, State, State}.
 
+handle_cast(scan, #wstate{options=Opt}=State) ->
+    Nodes = case lists:keyfind(nodes, 1, Opt) of
+        {nodes, N} -> N;
+        _ -> []
+    end,
+    Scan = case lists:keyfind(startup, 1, Opt) of
+        {startup, {scan, Hosts}} ->
+            %% this might take a while - hence we do this in handle_cast
+            scan_hosts(Hosts);
+        _ -> []
+    end,
+    Targets = lists:concat(Nodes, Scan),
+    fastlog:debug("Connecting to ~p~n", [Targets]),
+    NodeList = [dxkit_net:connect(N) || N <- Targets, N =/= node()],
+    {noreply, State#wstate{nodes=NodeList}};
 handle_cast(Msg, State) ->
 %%%    ==> {noreply, State}
 %%%        {noreply, State, Timeout}
@@ -150,6 +152,17 @@ handle_cast(Msg, State) ->
 %%%              Reason = normal | shutdown | Term terminate(State) is called
     fastlog:debug("In ~p `Cast': ~p~n", [self(), Msg]),
     {noreply, State}.
+
+scan_hosts(all) ->
+    lists:flatten(lists:map(fun scan_hosts/1, net_adm:host_file()));
+scan_hosts(Host) ->
+    case net_adm:names(Host) of
+        {ok, Names} ->
+            %% TODO: use list_to_exiting_atom instead
+            [list_to_atom(Name) || {Name, _} <- Names];
+        {error, nxdomain} -> 
+            []
+    end.
 
 handle_info({nodeup, Node}, State) ->
     reset_state({nodeup, Node, []}, State);
@@ -190,6 +203,7 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Nodes}=State) ->
     end.
 
 refresh_timer(Config) ->
+    %% TODO: move this into init/reconfigure so it isn't running so often
     case lists:keytake(refresh, 1, Config) of
         {value, {refresh, {Int, Uom}}, _} ->
             Timeout = case Uom of

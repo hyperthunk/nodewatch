@@ -56,8 +56,9 @@ vsn() ->
     string:strip(Vsn, right, $\n).
 
 lib_dirs() ->
-    Paths = reltool_utils:erl_libs(),
-    lists:flatten([io_lib:format("\"~s\", ", [P]) || P <- Paths] ++ "\"../\"").
+    Paths = ["../lib"|reltool_utils:erl_libs()],
+    Dirs = lists:filter(fun filelib:is_dir/1, Paths),
+    lists:flatten([io_lib:format("\"~s\", ", [D]) || D <- Dirs] ++ "\"../\"").
 
 incl_apps() ->
     ConfSet = lists:map(
@@ -71,6 +72,7 @@ incl_apps() ->
     string:join([io_lib:format("~p~n", [Inc]) || Inc <- Incl], ", ").
 
 write(Dest, Mod, Vars) ->
+    io:format("Vars = ~p~n", [Vars]),
     {ok, Res} = Mod:render(Vars),
     case file:write_file(filename:absname(Dest), list_to_binary(Res)) of
         ok -> ok;

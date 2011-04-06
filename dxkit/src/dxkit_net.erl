@@ -33,6 +33,7 @@
 -module(dxkit_net).
 
 -include("../include/types.hrl").
+-include("dxkit.hrl").
 
 -export([force_connect/1, connect/1, update_node/2]).
 
@@ -85,7 +86,7 @@ update_node(
         nodestatus={nodedown, _},
         uptime={ElapsedUpTime, _},
         downtime={ElapsedDownTime, LastDown}}=Node,
-        {nodeup, _}=Status) when is_record(Node, node_info) ->
+        {nodeup, _}=Status) ->
     Now = erlang:now(),
     Diff = ?DIFF_SEC(LastDown, Now),
     DownTime = {ElapsedDownTime + Diff, LastDown},
