@@ -41,5 +41,6 @@ do
     esac
 done
 
+echo "erl -sname nodewatch-dev -pa `pwd` $START_ARGS"
 eval "erl -sname nodewatch-dev -pa `pwd` $START_ARGS"
 

@@ -138,10 +138,11 @@ handle_cast(scan, #wstate{options=Opt}=State) ->
     Scan = case lists:keyfind(startup, 1, Opt) of
         {startup, {scan, Hosts}} ->
             %% this might take a while - hence we do this in handle_cast
-            scan_hosts(Hosts);
+            dxkit_net:find_nodes(Hosts);
         _ -> []
     end,
-    Targets = lists:concat(Nodes, Scan),
+    fastlog:debug("Nodes=~p, Scan=~p~n", [Nodes, Scan]),
+    Targets = lists:concat([Nodes, Scan]),
     fastlog:debug("Connecting to ~p~n", [Targets]),
     NodeList = [dxkit_net:connect(N) || N <- Targets, N =/= node()],
     {noreply, State#wstate{nodes=NodeList}};
@@ -150,19 +151,8 @@ handle_cast(Msg, State) ->
 %%%        {noreply, State, Timeout}
 %%%        {stop, Reason, State}
 %%%              Reason = normal | shutdown | Term terminate(State) is called
-    fastlog:debug("In ~p `Cast': ~p~n", [self(), Msg]),
+    %%fastlog:debug("In ~p `Cast': ~p~n", [self(), Msg]),
     {noreply, State}.
-
-scan_hosts(all) ->
-    lists:flatten(lists:map(fun scan_hosts/1, net_adm:host_file()));
-scan_hosts(Host) ->
-    case net_adm:names(Host) of
-        {ok, Names} ->
-            %% TODO: use list_to_exiting_atom instead
-            [list_to_atom(Name) || {Name, _} <- Names];
-        {error, nxdomain} -> 
-            []
-    end.
 
 handle_info({nodeup, Node}, State) ->
     reset_state({nodeup, Node, []}, State);

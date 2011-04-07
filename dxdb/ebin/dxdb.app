@@ -9,7 +9,6 @@
 	stdlib,
     crypto,
     sasl,
-    riak_err,
     fastlog
 	%% NB: we DO NOT start mnesia using appstart
   ]},

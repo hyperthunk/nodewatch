@@ -32,10 +32,17 @@
 
 -module(dxkit_net).
 
+-include_lib("kernel/include/inet.hrl").
 -include("../include/types.hrl").
 -include("dxkit.hrl").
 
--export([force_connect/1, connect/1, update_node/2]).
+-compile(export_all).
+%-export([force_connect/1
+%        ,connect/1
+%        ,update_node/2
+%        ,find_nodes/1]).
+
+-define(DEFAULT_EPMD_PORT, 4369).
 
 %%
 %% @doc Check the connection status of Node and return a #node_info{} record.
@@ -121,3 +128,113 @@ update_node(Node, _Status)
 %%                 {0.0,{1274,431579,810451}},
 %%                 {0.0,{1274,431579,810451}}},
 %%             {nodeup,[]}].
+
+%% 
+%% @doc Find all connect-able nodes. This function is equiv. 
+%% to net_adm:world/0, but is fasteras it avoids needless connection
+%% attempts when hosts are inaccessible and uses a short (5 second) 
+%% timeout when attempting to locate epmd on the target machine.
+%%
+find_nodes() ->
+    lists:flatten(lists:map(fun find_nodes/1, filter_hosts())).
+
+%% 
+%% @doc Find all connect-able nodes on Host. This function is similar to
+%% net_adm:names/1, but is faster as it avoids needless connection
+%% attempts when hosts are inaccessible and uses a short (5 second) 
+%% timeout when attempting to locate epmd on the target machine.
+%%
+find_nodes({hostname, Host}) ->
+    find_nodes(Host);
+find_nodes(Host) ->
+    Nodes = case net_adm:names(Host) of
+        {ok, Names} ->
+            %% TODO: use list_to_exiting_atom instead
+            [nodename(Name, Host) || {Name, _} <- Names];
+        {error, nxdomain} -> 
+            []
+    end,
+    Connections = [net_adm:ping(N) || N <- Nodes],
+    NodeStats = lists:zip(Connections, Nodes),
+    Found = [N || {Ping, N} <- NodeStats, Ping =:= pong],
+    sets:to_list(sets:from_list(Found)).
+
+filter_hosts() ->
+    {Hosts, _} = lists:foldl(fun uniq_hosts/2, {[], []}, net_adm:host_file()),
+    Hosts.
+
+uniq_hosts(Host, {Hosts, Addrs}=Found) ->
+    case inet:gethostbyname(Host) of
+        {ok, #hostent{h_addr_list=IPs}} ->
+            case lists:any(fun(IP) -> lists:member(IP, Addrs) end, IPs) of
+                true -> Found;
+                _ ->
+                    %% FIXME: check to IPv6
+                    case gen_tcp:connect(Host, epmd_port(), [inet], 5000) of
+                        {error, _} -> Found;
+                        {ok, Sock} ->
+                            ok = gen_tcp:close(Sock),
+                            Name = case inet:peername(Sock) of
+                                {ok,{{127,0,0,1},_}} ->
+                                    hostname(node_hostname());
+                                _ -> 
+                                    hostname(Host)
+                            end,
+                            case Name of 
+                                {einvalid_hostname, _} -> 
+                                    Found;
+                                HostName ->
+                                    {[HostName|Hosts], lists:concat([IPs, Addrs])}
+                            end
+                    end
+            end;
+        {error, _} -> 
+            Found
+    end.
+
+nodename(Name, {hostname, Host}) when is_list(Name), is_atom(Host) ->
+    list_to_atom(Name ++ "@" ++ atom_to_list(Host));
+nodename(Name, {hostname, Host}) when is_list(Name), is_list(Host) ->
+    list_to_atom(Name ++ "@" ++ Host);
+nodename(Name, Host) when is_list(Name), is_list(Host) ->
+    {hostname, HostName} = hostname(Host),
+    list_to_atom(Name ++ "@" ++ HostName).
+
+hostname(Host) when is_atom(Host) ->
+    hostname(atom_to_list(Host));
+hostname(Host) when is_list(Host) ->
+    Parts = string:tokens(Host, "."),
+    case net_kernel:longnames() of
+        false -> 
+            fastlog:error("** dxkit_net does not support shortnames! **", Host),
+            {einvalid_hostname, Host};
+        true -> 
+            case Parts of
+                [Host] -> 
+                    fastlog:warn("** System running to use fully qualified hostnames **~n" 
+                                 "** Hostname ~p is illegal **", Host),
+                    {einvalid_hostname, Host};
+                [_HostPart|_DomainParts] -> 
+                    {hostname, Host}
+            end
+    end.
+
+node_hostname() ->
+    node_hostname(node()).
+
+node_hostname(Node) ->
+    [_,Hostname] = string:tokens(atom_to_list(Node), "@"),
+    Hostname.
+
+shortname([$.|_]) -> [];
+shortname([])-> [];
+shortname([H|T]) -> [H|shortname(T)].
+
+epmd_port() ->
+    %% this seems a bit limiting, as passing -port <num> is all you need
+    %% get epmd running on another port - maybe should be configurable
+    %% and/or support a range of possible values? 
+    case os:getenv("ERL_EPMD_PORT") of
+        false -> ?DEFAULT_EPMD_PORT;
+        PortNum -> list_to_integer(PortNum)
+    end.

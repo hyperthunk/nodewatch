@@ -42,7 +42,6 @@ main(_) ->
                                 {erts_vsn, erlang:system_info(version)},
                                 {erl_libs, lib_dirs()},
                                 {app_deps, incl_apps()}]),
-    io:fwrite("Generating installer/setup configuration...~n"),
     setup_gen:run([{conf, "nodewatch.conf"},
                    {outdir, "release/setup"},
                    {name, "nodewatch"},
@@ -72,7 +71,6 @@ incl_apps() ->
     string:join([io_lib:format("~p~n", [Inc]) || Inc <- Incl], ", ").
 
 write(Dest, Mod, Vars) ->
-    io:format("Vars = ~p~n", [Vars]),
     {ok, Res} = Mod:render(Vars),
     case file:write_file(filename:absname(Dest), list_to_binary(Res)) of
         ok -> ok;

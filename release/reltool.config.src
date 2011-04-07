@@ -7,7 +7,6 @@
          stdlib,
          sasl,
          crypto,
-         riak_err,
          fastlog,
          dxdb,
          dxkit,

@@ -11,7 +11,6 @@
   {registered,[]},
   {applications,[kernel
                 ,stdlib
-                ,riak_err
                 ,fastlog]},
   {env,[
 %    {world, [
