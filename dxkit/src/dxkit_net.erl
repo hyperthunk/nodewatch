@@ -31,76 +31,54 @@
 %% -----------------------------------------------------------------------------
 
 -module(dxkit_net).
+-behaviour(gen_server).
+
+-export([init/1
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3]).
 
 -include_lib("kernel/include/inet.hrl").
 -include("../include/types.hrl").
 -include("dxkit.hrl").
-
--compile(export_all).
-%-export([force_connect/1
-%        ,connect/1
-%        ,update_node/2
-%        ,find_nodes/1]).
 
 -record(h_name, {host, domain, fullname}).
 
 -define(DEFAULT_EPMD_PORT, 4369).
 -define(DEFAULT_TIMEOUT, 5000).
 
-get_conf() ->
-    Home = case init:get_argument(home) of
-        {ok, [[H]]} -> [H];
-        _ ->
-            case os:getenv("HOME") of
-                false ->
-                    [];
-                Path ->
-                    Path
-            end
-    end,
-    SearchPath = [".", Home, code:priv_dir(dxkit)],
-    case file:path_consult(SearchPath, ".net.conf") of
-        {ok, Terms, _} ->
-            Host = hostname(),
-            InetRC = inet:get_rc(),
-            Search = read_conf(search, InetRC),
-            IP = case length(Search) > 0 of
-                true ->
-                    HN = hostname(Host, Search),
-                    prim_ip(HN#h_name.fullname);
-                false ->
-                    prim_ip(Host)
-            end,
-            [{hostname, Host}, 
-             {prim_ip, IP},
-             {domain, read_conf(domain, InetRC)},
-             {search, Search}|Terms];
-        Error ->
-            Error
-    end.
+-export([start/0, start_link/0]).
+-export([connect/1
+        ,force_connect/1
+        ,update_node/2
+        ,find_nodes/0
+        ,find_nodes/1]).
 
-read_conf(Key, Conf, Default) ->
-    kvc:value(Key, Conf, Default).
+%%
+%% Public API
+%%
 
-read_conf(KeyPath, Conf) when is_atom(KeyPath) orelse is_list(KeyPath) ->
-    kvc:path(KeyPath, Conf).
+start() ->
+    gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
-timeout(Host, Domain, Conf) ->
-    case read_conf("connect_timeout", Conf, ?DEFAULT_TIMEOUT) of
-        Settings when is_list(Settings) -> 
-            case read_conf(Domain, Settings, []) of
-                %% if config is {connect_timeout, [{domain, [some_other_crap]}]}
-                %% then we fall back to the default setting
-                [] -> 
-                    ?DEFAULT_TIMEOUT;
-                DomainSettings when is_list(DomainSettings) -> 
-                    read_conf(Host, DomainSettings, ?DEFAULT_TIMEOUT);
-                DomainValue ->
-                    DomainValue
-            end;
-        Value ->
-            Value
-    end.
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+%%
+%% @doc Find all connect-able nodes. This function is equiv.
+%% to net_adm:world/0, but is fasteras it avoids needless connection
+%% attempts when hosts are inaccessible and uses a short (5 second)
+%% timeout when attempting to locate epmd on the target machine.
+%%
+find_nodes() ->
+    ok = gen_server:call(?MODULE, find),
+    await_response().
+
+find_nodes(Host) ->
+    ok = gen_server:call(?MODULE, {find, Host}),
+    await_response().
 
 hostname() ->
     {ok, Name} = inet:gethostname(), Name.
@@ -110,9 +88,6 @@ prim_ip(Host) ->
         {ok, IP} -> IP;
         Err -> Err
     end.
-
-get_hosts() ->
-    read_conf(hosts, get_conf()).
 
 %%
 %% @doc Check the connection status of Node and return a #node_info{} record.
@@ -191,25 +166,137 @@ update_node(
 update_node(Node, _Status)
     when is_record(Node, node_info) -> Node.
 
-%% Mod:start([{refresh, {20, seconds}}, {nodes, [s1@malachi, s2@malachi]}]).
-%% Args =
-%%            [{node_info,s2@malachi,
-%%                 {nodeup,[]},
-%%                 {0.0,{1274,431579,810451}},
-%%                 {0.0,{1274,431579,810451}}},
-%%             {nodeup,[]}].
+
+%% @hidden
+init(_) ->
+    process_flag(trap_exit, true),
+    Home = case init:get_argument(home) of
+        {ok, [[H]]} -> [H];
+        _ ->
+            case os:getenv("HOME") of
+                false ->
+                    [];
+                Path ->
+                    Path
+            end
+    end,
+    SearchPath = [".", Home, code:priv_dir(dxkit)],
+    Conf = case file:path_consult(SearchPath, ".net.conf") of
+        {ok, Terms, _} ->
+            Host = hostname(),
+            InetRC = inet:get_rc(),
+            Search = read_conf(search, InetRC),
+            IP = case length(Search) > 0 of
+                true ->
+                    HN = hostname(Host, Search),
+                    prim_ip(HN#h_name.fullname);
+                false ->
+                    prim_ip(Host)
+            end,
+            ets:new(dx.net.workers,
+                    [named_table, protected,
+                    {read_concurrency, erlang:system_info(smp_support)}]),
+            %% FIXME: check for blacklist table before creating it....
+            DB = case read_conf(blacklist, Terms, disabled) of
+                enabled ->
+                    Spec = [bag, named_table, protected,
+                           {keypos, 4},
+                           {read_concurrency, 
+                                erlang:system_info(smp_support)}],
+                    fastlog:debug("Process ~p owns the blacklist~n", [self()]),
+                    ets:new(blacklist, Spec);
+                _ ->
+                    disabled
+            end,
+            [{blacklist_db, DB},
+             {hostname, Host},
+             {prim_ip, IP},
+             {domain, read_conf(domain, InetRC)},
+             {search, Search}|Terms];
+        Error ->
+            Error
+    end,
+    {ok, Conf}.
+
+handle_call(get_conf, _, State) ->
+    {reply, {ok, State}, State};
+handle_call(find, From, State) ->
+    WorkerPid = spawn_link(start_worker(From, State)),
+    ets:insert(dx.net.workers, {WorkerPid, From}),
+    {reply, ok, State};
+handle_call(Msg, {_From, _Tag}, State) ->
+    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
+    {reply, State, State}.
+
+handle_cast({blacklist, HN}, State) ->
+    ets:insert(blacklist, HN),
+    fastlog:info("Host ~p is now blacklisted!~n", [HN#h_name.fullname]),
+    {noreply, State};
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info({'EXIT', Worker, normal}, State) ->
+    %% worker has completed successfully
+    ets:delete(dx.net.workers, Worker),
+    {noreply, State};
+handle_info({'EXIT', Worker, Reason}, State) ->
+    %% TODO: what does it mean if we have no client? Is this part
+    %%             of the error kernel for this server?
+    Client = ets:lookup(dx.net.workers, Worker),
+    ets:delete(dx.net.workers, Worker),
+    gen_server:reply(Client, {error, Reason}),
+    {noreply, State};
+handle_info(Info, State) ->
+    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 %%
-%% @doc Find all connect-able nodes. This function is equiv.
-%% to net_adm:world/0, but is fasteras it avoids needless connection
-%% attempts when hosts are inaccessible and uses a short (5 second)
-%% timeout when attempting to locate epmd on the target machine.
+%% Internal API
 %%
-find_nodes() ->
-    Conf = get_conf(),
-    NodeList = lists:map(fun(H) -> find_nodes(H, Conf) end,
-                         filter_hosts(Conf)),
-    lists:flatten(NodeList).
+
+await_response() ->
+    receive
+        {_Ref, {nodes, Nodes}} ->
+            Nodes;
+        Other ->
+            Other
+    end.
+
+read_conf(Key, Conf, Default) ->
+    kvc:value(Key, Conf, Default).
+
+read_conf(KeyPath, Conf) when is_atom(KeyPath) orelse is_list(KeyPath) ->
+    kvc:path(KeyPath, Conf).
+
+timeout(Host, Domain, Conf) ->
+    case read_conf("connect_timeout", Conf, ?DEFAULT_TIMEOUT) of
+        Settings when is_list(Settings) ->
+            case read_conf(Domain, Settings, []) of
+                %% if config is {connect_timeout, [{domain, [some_other_crap]}]}
+                %% then we fall back to the default setting
+                [] ->
+                    ?DEFAULT_TIMEOUT;
+                DomainSettings when is_list(DomainSettings) ->
+                    read_conf(Host, DomainSettings, ?DEFAULT_TIMEOUT);
+                DomainValue ->
+                    DomainValue
+            end;
+        Value ->
+            Value
+    end.
+
+start_worker(Client, Conf) ->
+    fun() ->
+        NodeList = lists:map(fun(H) -> find_nodes(H, Conf) end,
+                             filter_hosts(Conf)),
+        gen_server:reply(Client, {nodes, lists:flatten(NodeList)})
+    end.
 
 %%
 %% @doc Find all connect-able nodes on Host. This function is similar to
@@ -221,85 +308,111 @@ find_nodes() ->
 %    find_nodes(Host);
 find_nodes(Host, Conf) ->
     HostNames = find_entries(Host, Conf),
-    Nodes = 
+    Nodes =
     lists:flatten(lists:map(
         fun(H) ->
             HostName = H#h_name.fullname,
             case net_adm:names(HostName) of
                 {ok, Names} ->
                     %% TODO: use list_to_exiting_atom instead
-                    [splice_names(Name, "@", HostName) 
+                    [splice_names(Name, "@", HostName)
                                         || {Name, _} <- Names];
                 {error, nxdomain} ->
                     []
             end
         end, HostNames)),
+    fastlog:debug("Attempting to ping ~p~n", [Nodes]),
     Connections = [net_adm:ping(N) || N <- Nodes],
     NodeStats = lists:zip(Connections, Nodes),
     Found = [N || {Ping, N} <- NodeStats, Ping =:= pong],
     sets:to_list(sets:from_list(Found)).
 
 find_entries(Host, Conf) ->
-    {_, _, Found} = lists:foldl(fun find_host_entries/2,
-                                {Host, Conf, sets:new()},
-                                read_conf(domains, Conf)),
-    sets:to_list(Found).
+    Parts = string:tokens(stringify(Host), "."),
+    case Parts of
+        [_] ->
+            %% short host names are searched for in all listed domains
+            {_, _, Found} = lists:foldl(fun find_host_entries/2,
+                                        {Host, Conf, sets:new()},
+                                        read_conf(domains, Conf)),
+            sets:to_list(Found);
+        [HostPart|Rest] ->
+            %% fully qualified host entries get checked only once
+            find_host_entries(Rest, {HostPart, Conf, sets:new()})
+    end.
 
 find_host_entries(Domain, {Host, Conf, Entries}) ->
+    fastlog:debug("Checking domain ~p for hosts named ~p~n", [Domain, Host]),
     Revised = case read_conf(shortnames, Conf) of
         [] ->
             Entries;
         ShortNames ->
-            fastlog:debug("Appending shortnames ~p~n", [ShortNames]),
             case lists:member(Host, lists:map(fun stringify/1, ShortNames)) of
-                true -> sets:add_element(hostname(Host), Entries);
-                false -> Entries
+                true -> 
+                    SName = hostname(Host),
+                    fastlog:debug("Appending sname ~p~n", [SName]),
+                    sets:add_element(SName, Entries);
+                false -> 
+                    Entries
             end
     end,
     Name = hostname(Host, Domain),
-    fastlog:debug("hostname set to ~p~n", [Name]),
-    case sets:is_element(Name, Revised) of
+    case is_blacklisted(Name, Conf) of
         true ->
-            {Host, Conf, Revised};
+            fastlog:debug("Blacklisted host ~p ignored~n", [Name#h_name.fullname]),
+            {Host, Conf, Entries};
         false ->
-            Timeout = timeout(stringify(Host), stringify(Domain), Conf),
-            fastlog:debug("Timeout for ~p set to ~p~n", [Host, Timeout]),
-            %% TODO: IPv6
-            case inet:gethostbyname(Name#h_name.fullname, inet, Timeout) of
-                {ok, #hostent{h_name=H_Name}} ->
-                    %% unreachable hosts are of no interest
-                    case gen_tcp:connect(H_Name, epmd_port(), [inet], Timeout) of
+            case sets:is_element(Name, Revised) of
+                true ->
+                    {Host, Conf, Revised};
+                false ->
+                    Timeout = timeout(stringify(Host), stringify(Domain), Conf),
+                    %% TODO: IPv6
+                    case inet:gethostbyname(Name#h_name.fullname, inet, Timeout) of
+                        {ok, #hostent{h_name=H_Name}} ->
+                            %% unreachable hosts are of no interest
+                            case gen_tcp:connect(H_Name, epmd_port(), [inet], Timeout) of
+                                {error, _} ->
+                                    fastlog:debug("Unable to connect to host ~p "
+                                                  "- skipping~n", [Host]),
+                                    maybe_blacklist(Name, Conf),
+                                    {Host, Conf, Revised};
+                                {ok, Sock} ->
+                                    fastlog:debug("Connected to epmd on ~p~n", [Host]),
+                                    ok = gen_tcp:close(Sock),
+                                    %% there is a host `Name' on this domain, so...
+                                    {Host, Conf, sets:add_element(Name, Revised)}
+                            end;
                         {error, _} ->
-                            fastlog:debug("Unable to connect to host ~p "
-                                          "- skipping~n", Host),
-                            {Host, Conf, Revised};
-                        {ok, Sock} ->
-                            fastlog:debug("Connected to epmd on ~p~n", [Host]),
-                            ok = gen_tcp:close(Sock),
-                            %% there is a host `Name' on this domain, so...
-                            {Host, Conf, sets:add_element(Name, Revised)}
-                    end;
-                {error, _} ->
-                    fastlog:debug("No dns resolution for ~p~n", [Name#h_name.fullname]),
-                    {Host, Conf, Revised}
+                            fastlog:debug("No dns resolution for ~p~n", [Name#h_name.fullname]),
+                            maybe_blacklist(Name, Conf),
+                            {Host, Conf, Revised}
+                    end
             end
+    end.
+
+is_blacklisted(#h_name{fullname=Name}, Conf) ->
+    case read_conf(blacklist, Conf, disabled) of
+        disabled ->
+            fastlog:debug("Blacklist disabled - ignoring ~p~n", [Name]),
+            false;
+        _ ->
+            fastlog:debug("Checking blacklist for ~p~n", [Name]),
+            ets:member(blacklist, Name)
+    end.
+
+maybe_blacklist(#h_name{fullname=Name}=HN, Conf) ->
+    fastlog:debug("Process ~p writing to the blacklist~n", [self()]),
+    case read_conf(blacklist, Conf, disabled) of
+        disabled ->
+            fastlog:debug("Blacklist disabled - ignoring ~p~n", [Name]),
+            disabled;
+        _ ->
+            gen_server:cast(?MODULE, {blacklist, HN})
     end.
 
 filter_hosts(Conf) ->
     sets:to_list(sets:from_list(read_conf(hosts, Conf))).
-
-%    {Hosts, _} = lists:foldl(fun uniq_hosts/2,
-%                            {Conf, [], []},
-%                            read_conf(hosts, Conf)),
-%    Hosts.
-
-nodename(Name, {hostname, Host}) when is_list(Name), is_atom(Host) ->
-    list_to_atom(Name ++ "@" ++ atom_to_list(Host));
-nodename(Name, {hostname, Host}) when is_list(Name), is_list(Host) ->
-    list_to_atom(Name ++ "@" ++ Host);
-nodename(Name, Host) when is_list(Name), is_list(Host) ->
-    {hostname, HostName} = hostname(Host),
-    list_to_atom(Name ++ "@" ++ HostName).
 
 hostname(H) ->
     #h_name{host=H, fullname=H}.

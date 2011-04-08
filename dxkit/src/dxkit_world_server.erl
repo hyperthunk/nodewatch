@@ -46,6 +46,8 @@
         ,start/1
         ,start_link/1]).
 
+-export([nodes/0]).
+
 -behavior(gen_server2).
 -include("../include/types.hrl").
 -include("dxkit.hrl").
@@ -93,13 +95,14 @@ start(Options) ->
 start_link(Options) ->
     gen_server2:start_link({local, ?MODULE}, ?MODULE, Options, []).
 
+nodes() ->
+    gen_server:call(?MODULE, nodes).
 
 %% -----------------------------------------------------------------------------
 %% gen_server2 callbacks
 %% -----------------------------------------------------------------------------
 
 %% @hidden
-%% initializes the server with the current "state of the world"
 init(Args) ->
     process_flag(trap_exit, true),
     Start = erlang:now(), End = Start,
@@ -109,6 +112,7 @@ init(Args) ->
                     timeout=Timeout, 
                     options=Args, 
                     nodes=[]},
+    %% discovery takes place out of band as this can block for a while....
     set_timer(Timeout),
     case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
         ok  ->

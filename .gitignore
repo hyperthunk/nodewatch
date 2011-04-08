@@ -21,4 +21,4 @@ lib/
 dev
 release/setup/
 log
-.hosts.erlang
+.hosts.erlang.net.conf
