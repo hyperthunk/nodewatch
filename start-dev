@@ -6,6 +6,7 @@ RUNNER_SCRIPT_DIR=$(cd ${0%/*} && pwd)
 REL_DIR="$RUNNER_SCRIPT_DIR/release"
 DEV_DIR="$RUNNER_SCRIPT_DIR/dev"
 START_ARGS="-sys $REL_DIR/setup/start -boot $REL_DIR/setup/start -config $REL_DIR/setup/sys.config"
+HOST=`hostname`
 
 if [ ! -d "$DEV_DIR" ]; then
     echo "Setting up development environment for first time..."
@@ -41,6 +42,7 @@ do
     esac
 done
 
-echo "erl -sname nodewatch-dev -pa `pwd` $START_ARGS"
-eval "erl -sname nodewatch-dev -pa `pwd` $START_ARGS"
+EXEC_CMD="erl -name nw-dev@$HOST -pa `pwd` $START_ARGS"
+echo "$EXEC_CMD"
+eval "$EXEC_CMD"
 

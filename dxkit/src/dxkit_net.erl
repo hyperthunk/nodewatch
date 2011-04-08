@@ -42,7 +42,77 @@
 %        ,update_node/2
 %        ,find_nodes/1]).
 
+-record(h_name, {host, domain, fullname}).
+
 -define(DEFAULT_EPMD_PORT, 4369).
+-define(DEFAULT_TIMEOUT, 5000).
+
+get_conf() ->
+    Home = case init:get_argument(home) of
+        {ok, [[H]]} -> [H];
+        _ ->
+            case os:getenv("HOME") of
+                false ->
+                    [];
+                Path ->
+                    Path
+            end
+    end,
+    SearchPath = [".", Home, code:priv_dir(dxkit)],
+    case file:path_consult(SearchPath, ".net.conf") of
+        {ok, Terms, _} ->
+            Host = hostname(),
+            InetRC = inet:get_rc(),
+            Search = read_conf(search, InetRC),
+            IP = case length(Search) > 0 of
+                true ->
+                    HN = hostname(Host, Search),
+                    prim_ip(HN#h_name.fullname);
+                false ->
+                    prim_ip(Host)
+            end,
+            [{hostname, Host}, 
+             {prim_ip, IP},
+             {domain, read_conf(domain, InetRC)},
+             {search, Search}|Terms];
+        Error ->
+            Error
+    end.
+
+read_conf(Key, Conf, Default) ->
+    kvc:value(Key, Conf, Default).
+
+read_conf(KeyPath, Conf) when is_atom(KeyPath) orelse is_list(KeyPath) ->
+    kvc:path(KeyPath, Conf).
+
+timeout(Host, Domain, Conf) ->
+    case read_conf("connect_timeout", Conf, ?DEFAULT_TIMEOUT) of
+        Settings when is_list(Settings) -> 
+            case read_conf(Domain, Settings, []) of
+                %% if config is {connect_timeout, [{domain, [some_other_crap]}]}
+                %% then we fall back to the default setting
+                [] -> 
+                    ?DEFAULT_TIMEOUT;
+                DomainSettings when is_list(DomainSettings) -> 
+                    read_conf(Host, DomainSettings, ?DEFAULT_TIMEOUT);
+                DomainValue ->
+                    DomainValue
+            end;
+        Value ->
+            Value
+    end.
+
+hostname() ->
+    {ok, Name} = inet:gethostname(), Name.
+
+prim_ip(Host) ->
+    case inet:ip(Host) of
+        {ok, IP} -> IP;
+        Err -> Err
+    end.
+
+get_hosts() ->
+    read_conf(hosts, get_conf()).
 
 %%
 %% @doc Check the connection status of Node and return a #node_info{} record.
@@ -129,68 +199,99 @@ update_node(Node, _Status)
 %%                 {0.0,{1274,431579,810451}}},
 %%             {nodeup,[]}].
 
-%% 
-%% @doc Find all connect-able nodes. This function is equiv. 
+%%
+%% @doc Find all connect-able nodes. This function is equiv.
 %% to net_adm:world/0, but is fasteras it avoids needless connection
-%% attempts when hosts are inaccessible and uses a short (5 second) 
+%% attempts when hosts are inaccessible and uses a short (5 second)
 %% timeout when attempting to locate epmd on the target machine.
 %%
 find_nodes() ->
-    lists:flatten(lists:map(fun find_nodes/1, filter_hosts())).
+    Conf = get_conf(),
+    NodeList = lists:map(fun(H) -> find_nodes(H, Conf) end,
+                         filter_hosts(Conf)),
+    lists:flatten(NodeList).
 
-%% 
+%%
 %% @doc Find all connect-able nodes on Host. This function is similar to
 %% net_adm:names/1, but is faster as it avoids needless connection
-%% attempts when hosts are inaccessible and uses a short (5 second) 
+%% attempts when hosts are inaccessible and uses a short (5 second)
 %% timeout when attempting to locate epmd on the target machine.
 %%
-find_nodes({hostname, Host}) ->
-    find_nodes(Host);
-find_nodes(Host) ->
-    Nodes = case net_adm:names(Host) of
-        {ok, Names} ->
-            %% TODO: use list_to_exiting_atom instead
-            [nodename(Name, Host) || {Name, _} <- Names];
-        {error, nxdomain} -> 
-            []
-    end,
+%find_nodes({hostname, Host}) ->
+%    find_nodes(Host);
+find_nodes(Host, Conf) ->
+    HostNames = find_entries(Host, Conf),
+    Nodes = 
+    lists:flatten(lists:map(
+        fun(H) ->
+            HostName = H#h_name.fullname,
+            case net_adm:names(HostName) of
+                {ok, Names} ->
+                    %% TODO: use list_to_exiting_atom instead
+                    [splice_names(Name, "@", HostName) 
+                                        || {Name, _} <- Names];
+                {error, nxdomain} ->
+                    []
+            end
+        end, HostNames)),
     Connections = [net_adm:ping(N) || N <- Nodes],
     NodeStats = lists:zip(Connections, Nodes),
     Found = [N || {Ping, N} <- NodeStats, Ping =:= pong],
     sets:to_list(sets:from_list(Found)).
 
-filter_hosts() ->
-    {Hosts, _} = lists:foldl(fun uniq_hosts/2, {[], []}, net_adm:host_file()),
-    Hosts.
+find_entries(Host, Conf) ->
+    {_, _, Found} = lists:foldl(fun find_host_entries/2,
+                                {Host, Conf, sets:new()},
+                                read_conf(domains, Conf)),
+    sets:to_list(Found).
 
-uniq_hosts(Host, {Hosts, Addrs}=Found) ->
-    case inet:gethostbyname(Host) of
-        {ok, #hostent{h_addr_list=IPs}} ->
-            case lists:any(fun(IP) -> lists:member(IP, Addrs) end, IPs) of
-                true -> Found;
-                _ ->
-                    %% FIXME: check to IPv6
-                    case gen_tcp:connect(Host, epmd_port(), [inet], 5000) of
-                        {error, _} -> Found;
+find_host_entries(Domain, {Host, Conf, Entries}) ->
+    Revised = case read_conf(shortnames, Conf) of
+        [] ->
+            Entries;
+        ShortNames ->
+            fastlog:debug("Appending shortnames ~p~n", [ShortNames]),
+            case lists:member(Host, lists:map(fun stringify/1, ShortNames)) of
+                true -> sets:add_element(hostname(Host), Entries);
+                false -> Entries
+            end
+    end,
+    Name = hostname(Host, Domain),
+    fastlog:debug("hostname set to ~p~n", [Name]),
+    case sets:is_element(Name, Revised) of
+        true ->
+            {Host, Conf, Revised};
+        false ->
+            Timeout = timeout(stringify(Host), stringify(Domain), Conf),
+            fastlog:debug("Timeout for ~p set to ~p~n", [Host, Timeout]),
+            %% TODO: IPv6
+            case inet:gethostbyname(Name#h_name.fullname, inet, Timeout) of
+                {ok, #hostent{h_name=H_Name}} ->
+                    %% unreachable hosts are of no interest
+                    case gen_tcp:connect(H_Name, epmd_port(), [inet], Timeout) of
+                        {error, _} ->
+                            fastlog:debug("Unable to connect to host ~p "
+                                          "- skipping~n", Host),
+                            {Host, Conf, Revised};
                         {ok, Sock} ->
+                            fastlog:debug("Connected to epmd on ~p~n", [Host]),
                             ok = gen_tcp:close(Sock),
-                            Name = case inet:peername(Sock) of
-                                {ok,{{127,0,0,1},_}} ->
-                                    hostname(node_hostname());
-                                _ -> 
-                                    hostname(Host)
-                            end,
-                            case Name of 
-                                {einvalid_hostname, _} -> 
-                                    Found;
-                                HostName ->
-                                    {[HostName|Hosts], lists:concat([IPs, Addrs])}
-                            end
-                    end
-            end;
-        {error, _} -> 
-            Found
+                            %% there is a host `Name' on this domain, so...
+                            {Host, Conf, sets:add_element(Name, Revised)}
+                    end;
+                {error, _} ->
+                    fastlog:debug("No dns resolution for ~p~n", [Name#h_name.fullname]),
+                    {Host, Conf, Revised}
+            end
     end.
+
+filter_hosts(Conf) ->
+    sets:to_list(sets:from_list(read_conf(hosts, Conf))).
+
+%    {Hosts, _} = lists:foldl(fun uniq_hosts/2,
+%                            {Conf, [], []},
+%                            read_conf(hosts, Conf)),
+%    Hosts.
 
 nodename(Name, {hostname, Host}) when is_list(Name), is_atom(Host) ->
     list_to_atom(Name ++ "@" ++ atom_to_list(Host));
@@ -200,40 +301,31 @@ nodename(Name, Host) when is_list(Name), is_list(Host) ->
     {hostname, HostName} = hostname(Host),
     list_to_atom(Name ++ "@" ++ HostName).
 
-hostname(Host) when is_atom(Host) ->
-    hostname(atom_to_list(Host));
-hostname(Host) when is_list(Host) ->
-    Parts = string:tokens(Host, "."),
-    case net_kernel:longnames() of
-        false -> 
-            fastlog:error("** dxkit_net does not support shortnames! **", Host),
-            {einvalid_hostname, Host};
-        true -> 
-            case Parts of
-                [Host] -> 
-                    fastlog:warn("** System running to use fully qualified hostnames **~n" 
-                                 "** Hostname ~p is illegal **", Host),
-                    {einvalid_hostname, Host};
-                [_HostPart|_DomainParts] -> 
-                    {hostname, Host}
-            end
-    end.
+hostname(H) ->
+    #h_name{host=H, fullname=H}.
 
-node_hostname() ->
-    node_hostname(node()).
+hostname(Host, Domain) ->
+    HostName = stringify(Host),
+    DomainName = stringify(Domain),
+    FullName = splice_names(HostName, ".", DomainName),
+    #h_name{host=HostName,
+            domain=DomainName,
+            fullname=FullName}.
 
-node_hostname(Node) ->
-    [_,Hostname] = string:tokens(atom_to_list(Node), "@"),
-    Hostname.
+splice_names(A, With, B) ->
+    list_to_atom(lists:flatten([stringify(A), With, stringify(B)])).
 
-shortname([$.|_]) -> [];
-shortname([])-> [];
-shortname([H|T]) -> [H|shortname(T)].
+stringify(Term) when is_atom(Term) ->
+    atom_to_list(Term);
+stringify(Term) when is_binary(Term) ->
+    binary_to_list(Term);
+stringify(Term) when is_list(Term) ->
+    Term.
 
 epmd_port() ->
     %% this seems a bit limiting, as passing -port <num> is all you need
     %% get epmd running on another port - maybe should be configurable
-    %% and/or support a range of possible values? 
+    %% and/or support a range of possible values?
     case os:getenv("ERL_EPMD_PORT") of
         false -> ?DEFAULT_EPMD_PORT;
         PortNum -> list_to_integer(PortNum)
