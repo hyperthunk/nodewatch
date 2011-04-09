@@ -51,11 +51,11 @@ start_link() ->
 
 init([]) ->
     Children = [
-        {dxdb_schema,
-            {dxdb_schema, start_link, []},
-            temporary, 5000, worker, [gen_server]},
         {dxdb_event_handler, 
             {gen_event, start_link, [{local, dxdb_event_handler}]},
-            temporary, 5000, worker, dynamic}
+            permanent, 5000, worker, dynamic},
+        {dxdb_ev,
+            {dxdb_ev, start_link, []},
+            permanent, 5000, worker, [gen_server]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

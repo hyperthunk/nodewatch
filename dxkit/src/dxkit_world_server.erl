@@ -49,6 +49,7 @@
 -export([nodes/0]).
 
 -behavior(gen_server2).
+
 -include("../include/types.hrl").
 -include("dxkit.hrl").
 
@@ -56,7 +57,7 @@
     start_ts        :: timestamp(),
     timeout         :: integer(),
     options  = []   :: [{atom(), term()}],
-    nodes    = []   :: [#node_info{}]
+    nodes           :: term()
 }).
 
 -type(server_option()   :: {refresh, {interval(), unit_of_measure()}} |
@@ -108,40 +109,21 @@ init(Args) ->
     Start = erlang:now(), End = Start,
     Timestamp = ?TS(Start, End),
     Timeout = refresh_interval(Args),
-    State = #wstate{start_ts=Timestamp, 
-                    timeout=Timeout, 
-                    options=Args, 
-                    nodes=[]},
+    State = #wstate{start_ts=Timestamp,
+                    timeout=Timeout,
+                    options=Args,
+                    nodes=ets:new(dx.world.nodes, [{keypos, 2}])},
     %% discovery takes place out of band as this can block for a while....
     set_timer(Timeout),
     case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
-        ok  ->
-            io:fwrite("ok we're good to go!~n"),
-            {ok, State};
-        Err ->
-            io:format("we're stopping because of ~p!~n", [Err]),
-            {stop, Err}
+        ok  -> {ok, State};
+        Err -> {stop, Err}
     end.
 
-handle_call(nodes, {_From, _Tag}, #wstate{nodes=Nodes}=State) ->
-    {reply, Nodes, State};
-handle_call(Msg, {_From, _Tag}, State) ->
-%%%
-%%%    ==> {reply, Reply, State}
-%%%        {reply, Reply, State, Timeout}
-%%%        {noreply, State}
-%%%        {noreply, State, Timeout}
-%%%        {stop, Reason, Reply, State}
-%%%              Reason = normal | shutdown | Term terminate(State) is called
-    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
-    {reply, State, State}.
+handle_call(nodes, {_From, _Tag}, #wstate{nodes=Tab}=State) ->
+    {reply, ets:tab2list(Tab), State}.
 
 handle_cast(_Msg, State) ->
-%%%    ==> {noreply, State}
-%%%        {noreply, State, Timeout}
-%%%        {stop, Reason, State}
-%%%              Reason = normal | shutdown | Term terminate(State) is called
-    %%fastlog:debug("In ~p `Cast': ~p~n", [self(), Msg]),
     {noreply, State}.
 
 handle_info({nodeup, Node}, State) ->
@@ -152,12 +134,29 @@ handle_info({nodedown, Node}, State) ->
     reset_state({nodedown, Node, []}, State);
 handle_info({nodedown, Node, InfoList}, State) ->
     reset_state({nodedown, Node, InfoList}, State);
-handle_info({timeout, _TRef, refresh}, State) ->
-    %% Connections = [dxkit_net:connect(NI) || NI <- State#wstate.nodes],
-    %% fastlog:debug("Connections: ~p~n", [Connections]),
-    {noreply, refresh(State)};
-handle_info(Info, State) ->
-    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+handle_info({timeout, _TRef, refresh},
+            #wstate{nodes=Tab, options=Opt, timeout=Timeout}=State) ->
+    Nodes = case lists:keyfind(nodes, 1, Opt) of
+        {nodes, N} -> N;
+        _ -> []
+    end,
+    %% FIXME: if find_nodes regularly takes longer than the timeout,
+    %%  we need to `up' the timeout accordingly...
+    Scan = case lists:keyfind(startup, 1, Opt) of
+        {startup, {scan, all}} ->
+            dxkit_net:find_nodes();
+        {startup, {scan, Hosts}} when is_list(Hosts) ->
+            lists:flatten([dxkit_net:find_nodes(Host) || Host <- Hosts]);
+        _ -> []
+    end,
+    NodeList = lists:concat([Nodes, Scan]),
+    fastlog:debug("[World] Revising NodeSet = ~p~n", [NodeList]),
+    [ets:insert(Tab, dxkit_net:connect(N)) || N <- NodeList, 
+                                              N =/= node()],
+    gen_event:notify(dxkit_event_handler, {world, refresh}),
+    set_timer(Timeout),
+    {noreply, State};
+handle_info(_, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -170,42 +169,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%      Private API
 %% -----------------------------------------------------------------------------
 
-refresh(#wstate{nodes=ExistingNodes, options=Opt, timeout=Timeout}=State) ->
-    Nodes = case lists:keyfind(nodes, 1, Opt) of
-        {nodes, N} -> N;
-        _ -> []
-    end,
-    %% this might take a while - hence we do this in handle_cast
-    Scan = case lists:keyfind(startup, 1, Opt) of
-        {startup, {scan, all}} ->
-            dxkit_net:find_nodes();
-        {startup, {scan, Hosts}} when is_list(Hosts) ->
-            lists:flatten([dxkit_net:find_nodes(Host) || Host <- Hosts]);
-        _ -> []
-    end,
-    fastlog:debug("ExistingNodes=~p, Nodes=~p, Scan=~p~n", 
-                  [ExistingNodes, Nodes, Scan]),
-    Current = [N#node_info.node_name || N <- ExistingNodes],
-    NodeList = merge([Current, Nodes, Scan]),
-    fastlog:debug("Connected to ~p~n", [NodeList]),
-    set_timer(Timeout),
-    Updated = [dxkit_net:connect(N) || N <- NodeList, N =/= node()],
-    State#wstate{nodes=Updated}.
-
 set_timer(Timeout) ->
-    fastlog:debug("Starting refresh timer with a ~p ms interval.~n", [Timeout]),
+    fastlog:debug("[World] Starting refresh timer with a ~p ms interval.~n", [Timeout]),
     erlang:start_timer(Timeout, ?MODULE, refresh).
 
-reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Nodes}=State) ->
-    fastlog:debug("node ~p status change: ~p~n", [Node, NodeStatus]),
-    case [N || N <- Nodes, N#node_info.node_name == Node] of
-        [NI] when is_record(NI, node_info) ->
-            Nodes3 = [dxkit_net:update_node(NI, {NodeStatus, InfoList}) |
-                lists:filter(fun ignore_node/1, Nodes)],
-            {noreply, State#wstate{nodes=Nodes3}};
-        [] ->
-            {noreply, State#wstate{nodes=[dxkit_net:connect(Node)|Nodes]}}
-    end.
+reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
+    fastlog:debug("[World] Node ~p status change: ~p~n", [Node, NodeStatus]),
+    NodeInfo = case ets:lookup(Tab, Node) of
+        [NI] ->
+            dxkit_net:update_node(NI, {NodeStatus, InfoList});
+        _ ->
+            dxkit_net:connect(Node)
+    end,
+    ets:insert(Tab, NodeInfo),
+    gen_event:notify(dxkit_event_handler, {world, {NodeStatus, NodeInfo}}),
+    {noreply, State}.
 
 refresh_interval(Config) ->
     %% TODO: move this into init/reconfigure so it isn't running so often
@@ -217,13 +195,6 @@ refresh_interval(Config) ->
             end;
         {value, {refresh, Millis}, _} ->
             Millis;
-        _ -> 
+        _ ->
             ?DEFAULT_TIMEOUT
     end.
-
-merge(NodeLists) ->
-    Set = sets:from_list(lists:flatten(NodeLists)),
-    sets:to_list(Set).
-
-ignore_node(Node) ->
-    fun(N) -> N#node_info.node_name =/= Node end.

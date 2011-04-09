@@ -42,15 +42,16 @@ start_link(StartArgs) ->
 %% ===================================================================
 
 init(StartArgs) ->
-    io:fwrite("dxkit_sup: StartArgs = ~p~n", [StartArgs]),
     WorldArgs = proplists:get_value(world, StartArgs, []),
-    io:fwrite("WorldArgs = ~p~n", [WorldArgs]),
     Children = [
+        {dxkit_event_handler, 
+            {gen_event, start_link, [{local, dxkit_event_handler}]},
+             permanent, 5000, worker, dynamic},
         {dxkit_net,
             {dxkit_net, start_link, []},
-             permanent, 5000, worker, [gen_server]},
+             permanent, 15000, worker, [gen_server]},
         {dxkit_world_server,
             {dxkit_world_server, start_link, [WorldArgs]},
-             permanent, 5000, worker, [gen_server]}
+             permanent, 10000, worker, [gen_server]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

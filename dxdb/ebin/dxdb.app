@@ -2,8 +2,8 @@
  [{description,"System Monitoring Database"},
   {vsn,"0.0.1"},
   {mod,{appstart_loader,[]}},
-  {modules,[dxdb_setup, dxdb_schema, dxdb_sup, dxdb]},
-  {registered,[dxdb_schema]},
+  {modules,[dxdb_setup, dxdb_ev, dxdb_sup, dxdb]},
+  {registered,[dxdb_ev, dxdb_event_handler]},
   {applications,[
     kernel,
 	stdlib,

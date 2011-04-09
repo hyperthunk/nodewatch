@@ -31,7 +31,7 @@
 %% is properly initialized before we start trying to consume it.
 %%
 %% -----------------------------------------------------------------------------
--module(dxdb_schema).
+-module(dxdb_ev).
 -author('Tim Watson <watson.timothy@gmail.com>').
 -behaviour(gen_server).
 

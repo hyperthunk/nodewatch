@@ -13,9 +13,6 @@
                 ,stdlib
                 ,fastlog]},
   {env,[
-%    {world, [
-%        {startup, {scan, all}}
-%    ]},
     {appstart,[
         {startup, [dxkit_sup, start_link]}
     ]}

@@ -50,4 +50,5 @@ init(StartArgs) ->
             {dxweb_websocket_registry, start_link, []},
             permanent, 5000, worker, [gen_server]}
     ],
+    %% NB: these guys should go down together, if at all
     {ok, {{one_for_all, 10, 10}, Children}}.

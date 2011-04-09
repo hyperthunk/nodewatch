@@ -50,11 +50,13 @@
 -define(DEFAULT_TIMEOUT, 5000).
 
 -export([start/0, start_link/0]).
--export([connect/1
-        ,force_connect/1
-        ,update_node/2
+-export([get_blacklist/0
+        ,clear_blacklist/0
+        ,connect/1
         ,find_nodes/0
-        ,find_nodes/1]).
+        ,find_nodes/1
+        ,force_connect/1
+        ,update_node/2]).
 
 %%
 %% Public API
@@ -67,15 +69,25 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%
-%% @doc Find all connect-able nodes. This function is equiv.
+%% @doc Find all detectable nodes. This function is equiv.
 %% to net_adm:world/0, but is fasteras it avoids needless connection
 %% attempts when hosts are inaccessible and uses a short (5 second)
 %% timeout when attempting to locate epmd on the target machine.
+%%
+%% This function observes the blacklist if it is enabled.
 %%
 find_nodes() ->
     ok = gen_server:call(?MODULE, find),
     await_response().
 
+%%
+%% @doc Find all detectable nodes on Host. This function is similar to
+%% net_adm:names/1, but it connects to each node whilst avoiding
+%% attempts when hosts are inaccessible and uses a short (5 second)
+%% timeout when attempting to locate epmd on the target machine.
+%%
+%% This function observes the blacklist if it is enabled.
+%%
 find_nodes(Host) ->
     ok = gen_server:call(?MODULE, {find, Host}),
     await_response().
@@ -88,6 +100,12 @@ prim_ip(Host) ->
         {ok, IP} -> IP;
         Err -> Err
     end.
+
+get_blacklist() ->
+    gen_server:call(?MODULE, get_blacklist).
+
+clear_blacklist() ->
+    gen_server:call(?MODULE, clear_blacklist).
 
 %%
 %% @doc Check the connection status of Node and return a #node_info{} record.
@@ -166,6 +184,9 @@ update_node(
 update_node(Node, _Status)
     when is_record(Node, node_info) -> Node.
 
+%%
+%% gen_server callbacks
+%%
 
 %% @hidden
 init(_) ->
@@ -201,10 +222,9 @@ init(_) ->
                 enabled ->
                     Spec = [bag, named_table, protected,
                            {keypos, 4},
-                           {read_concurrency, 
+                           {read_concurrency,
                                 erlang:system_info(smp_support)}],
-                    fastlog:debug("Process ~p owns the blacklist~n", [self()]),
-                    ets:new(blacklist, Spec);
+                    ets:new(dx.net.blacklist, Spec);
                 _ ->
                     disabled
             end,
@@ -218,10 +238,19 @@ init(_) ->
     end,
     {ok, Conf}.
 
+handle_call(get_blacklist, _, State) ->
+    {reply, ets:tab2list(dx.net.blacklist), State};
+handle_call(clear_blacklist, _, State) ->
+    true = ets:delete_all_objects(dx.net.blacklist),
+    {reply, ok, State};
 handle_call(get_conf, _, State) ->
     {reply, {ok, State}, State};
 handle_call(find, From, State) ->
     WorkerPid = spawn_link(start_worker(From, State)),
+    ets:insert(dx.net.workers, {WorkerPid, From}),
+    {reply, ok, State};
+handle_call({find, Host}, From, State) ->
+    WorkerPid = spawn_link(start_worker(From, {Host, State})),
     ets:insert(dx.net.workers, {WorkerPid, From}),
     {reply, ok, State};
 handle_call(Msg, {_From, _Tag}, State) ->
@@ -229,7 +258,7 @@ handle_call(Msg, {_From, _Tag}, State) ->
     {reply, State, State}.
 
 handle_cast({blacklist, HN}, State) ->
-    ets:insert(blacklist, HN),
+    ets:insert(dx.net.blacklist, HN),
     fastlog:info("Host ~p is now blacklisted!~n", [HN#h_name.fullname]),
     {noreply, State};
 handle_cast(_Msg, State) ->
@@ -291,6 +320,11 @@ timeout(Host, Domain, Conf) ->
             Value
     end.
 
+start_worker(Client, {Host, Conf}) ->
+    fun() ->
+        Reply = {nodes, lists:flatten(find_nodes(Host, Conf))},
+        gen_server:reply(Client, Reply)
+    end;
 start_worker(Client, Conf) ->
     fun() ->
         NodeList = lists:map(fun(H) -> find_nodes(H, Conf) end,
@@ -298,12 +332,6 @@ start_worker(Client, Conf) ->
         gen_server:reply(Client, {nodes, lists:flatten(NodeList)})
     end.
 
-%%
-%% @doc Find all connect-able nodes on Host. This function is similar to
-%% net_adm:names/1, but is faster as it avoids needless connection
-%% attempts when hosts are inaccessible and uses a short (5 second)
-%% timeout when attempting to locate epmd on the target machine.
-%%
 %find_nodes({hostname, Host}) ->
 %    find_nodes(Host);
 find_nodes(Host, Conf) ->
@@ -321,7 +349,6 @@ find_nodes(Host, Conf) ->
                     []
             end
         end, HostNames)),
-    fastlog:debug("Attempting to ping ~p~n", [Nodes]),
     Connections = [net_adm:ping(N) || N <- Nodes],
     NodeStats = lists:zip(Connections, Nodes),
     Found = [N || {Ping, N} <- NodeStats, Ping =:= pong],
@@ -329,17 +356,18 @@ find_nodes(Host, Conf) ->
 
 find_entries(Host, Conf) ->
     Parts = string:tokens(stringify(Host), "."),
-    case Parts of
+    {_, _, Found} = case Parts of
         [_] ->
             %% short host names are searched for in all listed domains
-            {_, _, Found} = lists:foldl(fun find_host_entries/2,
+            lists:foldl(fun find_host_entries/2,
                                         {Host, Conf, sets:new()},
-                                        read_conf(domains, Conf)),
-            sets:to_list(Found);
+                                        read_conf(domains, Conf));
         [HostPart|Rest] ->
             %% fully qualified host entries get checked only once
-            find_host_entries(Rest, {HostPart, Conf, sets:new()})
-    end.
+            DomainPart = rejoin(Rest, "."),
+            find_host_entries(DomainPart, {HostPart, Conf, sets:new()})
+    end,
+    sets:to_list(Found).
 
 find_host_entries(Domain, {Host, Conf, Entries}) ->
     fastlog:debug("Checking domain ~p for hosts named ~p~n", [Domain, Host]),
@@ -348,11 +376,9 @@ find_host_entries(Domain, {Host, Conf, Entries}) ->
             Entries;
         ShortNames ->
             case lists:member(Host, lists:map(fun stringify/1, ShortNames)) of
-                true -> 
-                    SName = hostname(Host),
-                    fastlog:debug("Appending sname ~p~n", [SName]),
-                    sets:add_element(SName, Entries);
-                false -> 
+                true ->
+                    sets:add_element(hostname(Host), Entries);
+                false ->
                     Entries
             end
     end,
@@ -394,18 +420,14 @@ find_host_entries(Domain, {Host, Conf, Entries}) ->
 is_blacklisted(#h_name{fullname=Name}, Conf) ->
     case read_conf(blacklist, Conf, disabled) of
         disabled ->
-            fastlog:debug("Blacklist disabled - ignoring ~p~n", [Name]),
             false;
         _ ->
-            fastlog:debug("Checking blacklist for ~p~n", [Name]),
-            ets:member(blacklist, Name)
+            ets:member(dx.net.blacklist, Name)
     end.
 
-maybe_blacklist(#h_name{fullname=Name}=HN, Conf) ->
-    fastlog:debug("Process ~p writing to the blacklist~n", [self()]),
+maybe_blacklist(#h_name{}=HN, Conf) ->
     case read_conf(blacklist, Conf, disabled) of
         disabled ->
-            fastlog:debug("Blacklist disabled - ignoring ~p~n", [Name]),
             disabled;
         _ ->
             gen_server:cast(?MODULE, {blacklist, HN})
@@ -434,6 +456,17 @@ stringify(Term) when is_binary(Term) ->
     binary_to_list(Term);
 stringify(Term) when is_list(Term) ->
     Term.
+
+rejoin(Parts, With) ->
+    lists:foldl(
+        fun(E, Acc) ->
+            case Acc of
+                [] ->
+                    E;
+                _ ->
+                    string:join([E, Acc], With)
+            end
+        end, "", lists:reverse(Parts)).
 
 epmd_port() ->
     %% this seems a bit limiting, as passing -port <num> is all you need

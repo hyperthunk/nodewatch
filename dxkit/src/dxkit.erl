@@ -38,6 +38,6 @@
 %%
 start_dev() ->
     appstart:start_deps(dxkit),
-    fastlog:set_level(debug),
+    fastlog:set_level(info),
     application:start(dxkit),
     ok.
