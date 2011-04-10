@@ -33,15 +33,15 @@
 -module(dxkit_net).
 -behaviour(gen_server).
 
--export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,terminate/2
-        ,code_change/3]).
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
 -include_lib("kernel/include/inet.hrl").
--include("../include/types.hrl").
+-include("../include/nodewatch.hrl").
 -include("dxkit.hrl").
 
 -record(h_name, {host, domain, fullname}).
@@ -50,13 +50,9 @@
 -define(DEFAULT_TIMEOUT, 5000).
 
 -export([start/0, start_link/0]).
--export([get_blacklist/0
-        ,clear_blacklist/0
-        ,connect/1
-        ,find_nodes/0
-        ,find_nodes/1
-        ,force_connect/1
-        ,update_node/2]).
+-export([get_blacklist/0, clear_blacklist/0,
+         connect/1, find_nodes/0, find_nodes/1,
+         force_connect/1, update_node/2]).
 
 %%
 %% Public API
@@ -202,7 +198,7 @@ init(_) ->
             end
     end,
     SearchPath = [".", Home, code:priv_dir(dxkit)],
-    Conf = case file:path_consult(SearchPath, ".net.conf") of
+    case file:path_consult(SearchPath, ".net.conf") of
         {ok, Terms, _} ->
             Host = hostname(),
             InetRC = inet:get_rc(),
@@ -228,15 +224,16 @@ init(_) ->
                 _ ->
                     disabled
             end,
+            Conf = 
             [{blacklist_db, DB},
              {hostname, Host},
              {prim_ip, IP},
              {domain, read_conf(domain, InetRC)},
-             {search, Search}|Terms];
+             {search, Search}|Terms],
+            {ok, Conf};
         Error ->
-            Error
-    end,
-    {ok, Conf}.
+            {stop, Error}
+    end.
 
 handle_call(get_blacklist, _, State) ->
     {reply, ets:tab2list(dx.net.blacklist), State};
@@ -247,10 +244,13 @@ handle_call(get_conf, _, State) ->
     {reply, {ok, State}, State};
 handle_call(find, From, State) ->
     WorkerPid = spawn_link(start_worker(From, State)),
+    fastlog:debug("find ~p INSERT -> dx.net.workers, {~p, ~p}~n", [self(), WorkerPid, From]),
     ets:insert(dx.net.workers, {WorkerPid, From}),
     {reply, ok, State};
 handle_call({find, Host}, From, State) ->
     WorkerPid = spawn_link(start_worker(From, {Host, State})),
+    fastlog:debug("find-host ~p INSERT -> dx.net.workers, {~p, ~p}~n", 
+                    [self(), WorkerPid, From]),
     ets:insert(dx.net.workers, {WorkerPid, From}),
     {reply, ok, State};
 handle_call(Msg, {_From, _Tag}, State) ->

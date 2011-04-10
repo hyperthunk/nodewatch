@@ -4,12 +4,11 @@
   {mod,{appstart_loader,[]}},
   {modules,[dxdb_setup, dxdb_ev, dxdb_sup, dxdb]},
   {registered,[dxdb_ev, dxdb_event_handler]},
-  {applications,[
-    kernel,
-	stdlib,
-    crypto,
-    sasl,
-    fastlog
+  {applications,[kernel,
+                 stdlib,
+                 crypto,
+                 sasl,
+                 fastlog
 	%% NB: we DO NOT start mnesia using appstart
   ]},
   {env,[

@@ -31,9 +31,7 @@
 -module(dxweb_http_handler).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([start_link/1
-        ,http_handler_loop/1
-        ,websocket_handler_loop/1]).
+-export([start_link/1, http_handler_loop/1, websocket_handler_loop/1]).
 
 start_link(Options) ->
     F = fun({K,_}=E, Acc) -> lists:keystore(K, 1, Acc, E) end,
@@ -50,11 +48,11 @@ http_handler_loop(Req) ->
 
 websocket_handler_loop(Ws) ->
     SID = get_ws_client_id(Ws),
-    dxweb_websocket_registry:store(SID, Ws),
+    ok = dxweb_session:set_websocket(SID, Ws),
     handle_websocket(Ws).
 
 handle_http_request(Req, _, ["service", "login"]) ->
-    case dxweb_session:login(Req) of
+    case dxweb_session:establish_session(Req) of
         {error, Reason} ->
             Req:respond(401, [dxweb_util:marshal(Req, Reason)]);
         SID ->
@@ -63,6 +61,8 @@ handle_http_request(Req, _, ["service", "login"]) ->
     end;
 handle_http_request(Req, _, ["static"|ResourcePath]) ->
     Req:file(resolve_path(ResourcePath));
+handle_http_request(Req, invalid, _) ->
+    Req:respond(401, [{"Location", "service/login"}], []);
 handle_http_request(Req, SID, ["service", Resource|Rest]) ->
     Mod = "dxweb_" ++ Resource ++ "_controller",
     apply(Mod, string:to_lower(atom_to_list(Req:get(method))), [Req,SID|Rest]).
@@ -76,11 +76,10 @@ handle_websocket(Ws) ->
     %% gen_server might make for a better home - can misultin do this?
     receive
         closed ->
-            %% NB: the {ws_autoexit, false} option means we need to 
-            %% manually ensure that this process exits - so no tail call here
+            %% NB: the disconnection of a websocket resets/clears the session
             SessionID = get_ws_client_id(Ws),
             fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]),
-            dxweb_websocket_registry:remove(SessionID, Ws);
+            ok = dxweb_session:remove_session(SessionID);
         Other ->
             fastlog:debug("Websocket *other* => ~p~n", [Other]),
             handle_websocket(Ws)

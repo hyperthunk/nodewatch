@@ -38,6 +38,7 @@
 %%
 start_dev() ->
     appstart:start_deps(dxkit),
-    fastlog:set_level(info),
+    fastlog:set_level(debug),
     application:start(dxkit),
+    {atomic, ok} = mnesia:load_textfile("../inttest/testdb.conf"),
     ok.

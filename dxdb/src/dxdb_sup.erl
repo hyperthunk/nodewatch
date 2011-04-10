@@ -27,7 +27,7 @@
 -author('Tim Watson <watson.timothy@gmail.com>').
 -behaviour(supervisor).
 
--include("../include/types.hrl").
+-include("../include/nodewatch.hrl").
 
 %% API
 -export([full_start/0, start_link/0]).

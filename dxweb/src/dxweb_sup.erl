@@ -23,16 +23,11 @@
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
 %%
-%% Our supervision tree covers three main areas:
-%%    1. HTTP Infrastructure
-%%    2. Gathering Performance Counters from Eper
-%%    3. SubSystem Event Notification Bridge
+%% @doc Supervisor for the main web application.
 %%
 %% The HTTP supervision tree is maintained by the virtual dxweb_http_server,
-%% which is itself a supervisor. The Eper collector and associated processes
-%% are hosted seperately by a tree of gen_servers. Finally, the notification
-%% bridge handles the pub/sub between the collected performance counters and
-%% the HTTP *sessions* maintained for each (browser or other type of ) client.
+%% which is itself a supervisor. The notification bridge handles the pub/sub 
+%% between events coming out of dxkit and websocket *sessions* (per client).
 %%
 %% -----------------------------------------------------------------------------
 
@@ -59,9 +54,6 @@ init(StartArgs) ->
         {dxweb_http_server,
             {dxweb_http_server, start_link,
                 [proplists:get_value(webconfig, StartArgs)]},
-            permanent, infinity, supervisor, [supervisor]},
-        {dxweb_event_bridge,
-            {dxweb_event_bridge, start_link, []},
-            permanent, 5000, worker, [gen_server]}
+            permanent, infinity, supervisor, [supervisor]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

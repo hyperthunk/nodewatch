@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Type Definitions Header
+%% Erlang System Monitoring Tools: Event (Disk) Log
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,37 +22,53 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: May 2010
+%% -----------------------------------------------------------------------------
 
--type(timestamp()       :: {integer(), integer(), integer()}). %% see erlang:now/0
--type(conn_time()       :: {number(), timestamp()}).
--type(interval()        :: integer()).
--type(unit_of_measure() :: seconds | minutes | hours | milliseconds).
--type(nodeinfo()        :: [{atom(), term()}]).
--type(nodestatus()      :: unknown | {nodeup | nodedown, nodeinfo()}).
--type(mode()            :: active | passive).
--type(sensor()          :: atom()).
--type(username()        :: string()).
+-module(dxkit_event_log).
+-author('Tim Watson <watson.timothy@gmail.com>').
+-behaviour(gen_event).
 
--record(node_info, {
-    node_name                   :: node(),
-    nodestatus  = unknown       :: nodestatus(),
-    uptime      = {0,{0,0,0}}   :: conn_time(),
-    downtime    = {0,{0,0,0}}   :: conn_time()
-}).
+-export([init/1
+        ,handle_event/2
+        ,handle_call/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3]).
 
-%% Represents a subscription - these are *only* stored against a specific user
--record(subscription, {
-    id                  :: integer(),
-    user                :: {user, username()},
-    mode    = passive   :: mode(),
-    sensor  = undefined :: sensor()
-}).
+-include("../include/nodewatch.hrl").
+-include("dxkit.hrl").
 
-%% User is an aggregate root in our domain model
--record(user, {
-    name                :: username(),
-    password            :: string()
-}).
+-record(state, {logfile, level}).
 
-%% The named event handler registered by dxdb_sup on startup.
--define(DB_EVENT, dxdb_event_handler).
+init([]) ->
+  {ok, #state{}}.
+
+handle_event(_Message, State) ->
+  {ok, State}.
+
+%%
+%% @private
+%% 
+handle_call(_, State) ->
+  {ok, ignored, State}.
+
+%%
+%% @private
+%% 
+handle_info(_Info, State) ->
+  {ok, State}.
+
+%%
+%% @private
+%% 
+terminate(_Reason, _State) ->
+  ok.
+
+%%
+%% @private
+%% 
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.

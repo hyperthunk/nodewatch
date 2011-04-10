@@ -25,7 +25,7 @@
 
 -module(dxdb_setup).
 -author('Tim Watson <watson.timothy@gmail.com>').
--include("../include/types.hrl").
+-include("../include/nodewatch.hrl").
 -include("dxdb.hrl").
 
 %% API
@@ -36,16 +36,16 @@ create_db() ->
     application:start(mnesia, permanent).
 
 create_schema() ->
-    ok = create_seq(),
+    %% ok = create_seq(),
     Tabs = [{user, record_info(fields, user)}, 
             {subscription, record_info(fields, subscription)}],
     [create_table(T, Attrs) || {T, Attrs} <- Tabs],
-    mnesia:wait_for_tables(['dxdb.seq', user, subscription], infinity).
+    mnesia:wait_for_tables([user, subscription], infinity).
 
-create_seq() ->
-    create_table('dxdb.seq', set, record_info(fields, 'dxdb.seq')),
-    mnesia:dirty_write(#'dxdb.seq'{ key='subscription.nextkey',
-                                    nextkey=0 }).
+%%create_seq() ->
+%%    create_table('dxdb.seq', set, record_info(fields, 'dxdb.seq')),
+%%    mnesia:dirty_write(#'dxdb.seq'{ key='subscription.nextkey',
+%%                                    nextkey=0 }).
 
 create_table(Name, Attrs) ->
     create_table(Name, ordered_set, Attrs).

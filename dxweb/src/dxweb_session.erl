@@ -23,19 +23,45 @@
 %% THE SOFTWARE.
 %% ------------------------------------------------------------------------------
 %%
-%% @doc 
+%% @doc This server maintains a set of mappings between authenticated clients,
+%% session ids and open web sockets. As well as establishing and removing a
+%% session, this module will allow you to configure the websocket connection for
+%% it and send terms (as json) to the websocket client for a given session id.
 %%
 %% ------------------------------------------------------------------------------
 
 -module(dxweb_session).
 -author('Tim Watson <watson.timothy@gmail.com>').
+-behaviour(gen_server).
 
--export([establish_session/1
-        ,send/2
-        ,send_term/2]).
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
+
+-export([start/0, start_link/0]).
+
+-export([establish_session/1, send/2, send_term/2,
+         set_websocket/2, remove_session/1, get_user_from_req/1]).
+
+-include("../include/nodewatch.hrl").
+
+-record(session, {sid, user, websock}).
 
 %%
-%% @doc Converts `Term' to json and sends it to 
+%% Public API
+%%
+
+start() ->
+    gen_server:start({local, ?MODULE}, ?MODULE, [], []).
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+%%
+%% @doc Converts `Term' to json and sends it to
 %% any websocket registered, against the supplied `SessionID'.
 %%
 send(SessionID, Data) ->
@@ -46,12 +72,15 @@ send(SessionID, Data) ->
 %% against the supplied `SessionID'.
 %%
 send_term(SessionID, Term) ->
-    case dxweb_websocket_registry:lookup(SessionID) of
-        error ->
-            {error, {invalid_sid, SessionID}};
+    case lookup_websocket(SessionID) of
+        {error, Reason} ->
+            exit({error, {SessionID, Reason}});
         WebSock ->
             WebSock:send(Term)
     end.
+
+set_websocket(SessionID, WebSock) ->
+    gen_server:call(?MODULE, {set_websocket, SessionID, WebSock}).
 
 %%
 %% @doc Creates a new session, authenticating the user's
@@ -59,19 +88,100 @@ send_term(SessionID, Term) ->
 %% or {error, Reason} if login fails.
 %%
 establish_session(Req) ->
-    case validate_user(auth_credentials(Req)) of
+    User = get_user_from_req(Req),
+    case authenticate_user(User) of
         true ->
-            UUID = dxweb_util:make_uuid(),
-            {registered, UUID} = dxweb_websocket_registry:register(UUID),
-            UUID;
-        _NoAuth -> 
+            gen_server:call(?MODULE,
+                {establish, #session{ user=User#user.name,
+                                      websock=dxweb_invalid_websocket }});
+        _NoAuth ->
             {error, <<"login failed">>}
     end.
 
-auth_credentials(Req) ->
-    PostData = Req:parse_post(),
-    {proplists:get_value(username, PostData), 
-     proplists:get_value(password, PostData)}.
+remove_session(SessionID) ->
+    gen_server:call(?MODULE, {remove, SessionID}).
 
-validate_user({UserName, Password}) ->
+get_user_from_req(Req) ->
+    PostData = Req:parse_post(),
+    Name = proplists:get_value(username, PostData),
+    Password = proplists:get_value(password, PostData),
+    #user{name=Name, password=Password}.
+
+%%
+%% gen_server callbacks
+%%
+
+%% @hidden
+init(_) ->
+    process_flag(trap_exit, true),
+    %% The sessions table stores a mapping from session id to user
+    ets:new('dxweb.sessions',
+            [named_table, private,
+            {read_concurrency, erlang:system_info(smp_support)}]),
+    {ok, []}.
+
+handle_call({establish, #session{user=User}=Session}, _, State) ->
+    case find_user_session(User) of
+        {error, _} ->
+            SID = dxweb_util:make_uuid(),
+            ets:insert('dxweb.sessions', Session#session{sid=SID}),
+            {reply, SID, State};
+        SID ->
+            %% so a user can only be logged in to one session at once
+            {reply, {ignored, SID}, State}
+    end;
+handle_call({remove, SessionID}, _, State) ->
+    ets:delete('dxweb.sessions', SessionID),
+    {reply, ok, State};
+handle_call({get_session_id, User}, _, State) ->
+    {reply, find_user_session(User), State};
+handle_call({set_websocket, SessionID, WebSock}, _, State) ->
+    case ets:lookup('dxweb.sessions', SessionID) of
+        [Session] ->
+            ets:insert('dxweb.sessions', Session#session{websock=WebSock}),
+            {reply, ok, State};
+        _Other ->
+            {reply, {error, "Invalid User Session"}, State}
+    end;
+handle_call({websocket, SessionID}, _, State) ->
+    case ets:lookup('dxweb.sessions', SessionID) of
+        [Session] ->
+            {reply, Session#session.websock, State};
+        _Other ->
+            {reply, {error, "Invalid User Session"}, State}
+    end;
+handle_call(Msg, {_From, _Tag}, State) ->
+    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
+    {reply, State, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(Info, State) ->
+    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    %% I'm assuming that `misultin' closes websockets when their ws_loop dies?
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%
+%% Internal API
+%%
+
+find_user_session(User) ->
+    case ets:match_object('dxweb.sessions', {'_', '_', User, '_'}) of
+        [Session] ->
+            Session#session.sid;
+        [] ->
+            {error, "Invalid User Session"}
+    end.
+
+lookup_websocket(SessionID) ->
+    gen_server:call(?MODULE, {websocket, SessionID}).
+
+authenticate_user({UserName, Password}) ->
     dxdb:check_user(UserName, Password).

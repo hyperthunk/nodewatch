@@ -26,12 +26,8 @@
 -module(dxweb_util).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([marshal/1
-        ,unmarshal/1
-        ,make_uuid/0
-        ,header/2
-        ,parse_cookie/1
-        ,cookie_item_fold/2]).
+-export([marshal/1, unmarshal/1, make_uuid/0,
+         header/2, parse_cookie/1, cookie_item_fold/2]).
 
 -include("dxweb.hrl").
 -include_lib("misultin/include/misultin.hrl").

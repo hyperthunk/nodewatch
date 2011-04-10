@@ -1,6 +1,6 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: Supervisor for HTTP Services
+%% Erlang System Monitoring: Bridge between collector process and event handlers
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -21,34 +21,53 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
+%%
+%% @doc TBC
+%%
+%% ------------------------------------------------------------------------------
 
--module(dxweb_http_server).
+-module(dxkit_event_bridge).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(supervisor).
+-behaviour(gen_event).
 
--export([start_link/1]).
--export([init/1]).
+-export([init/1,
+         handle_call/2,
+         handle_event/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
+-include("../include/nodewatch.hrl").
 
-start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
+-record(state, {logfile, level}).
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
+init([]) ->
+  {ok, #state{}}.
 
-init(StartArgs) ->
-    Children = [
-        {dxweb_http_handler,
-            {dxweb_http_handler, start_link, [StartArgs]},
-            permanent, 5000, worker, [gen_server]},
-        {dxweb_session,
-            {dxweb_session, start_link, []},
-            permanent, 5000, worker, [gen_server]}
-    ],
-    %% NB: these guys should go down together, if at all
-    {ok, {{one_for_all, 10, 10}, Children}}.
+handle_event(_Message, State) ->
+  {ok, State}.
+
+%%
+%% @private
+%% 
+handle_call(_, State) ->
+  {ok, ignored, State}.
+
+%%
+%% @private
+%% 
+handle_info(_Info, State) ->
+  {ok, State}.
+
+%%
+%% @private
+%% 
+terminate(_Reason, _State) ->
+  ok.
+
+%%
+%% @private
+%% 
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.

@@ -35,22 +35,20 @@
 -module(dxkit_world_server).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,terminate/2
-        ,code_change/3]).
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
--export([start/0
-        ,start/1
-        ,start_link/1]).
+-export([start/0, start/1, start_link/1]).
 
 -export([nodes/0]).
 
 -behavior(gen_server2).
 
--include("../include/types.hrl").
+-include("../include/nodewatch.hrl").
 -include("dxkit.hrl").
 
 -record(wstate, {
@@ -153,7 +151,9 @@ handle_info({timeout, _TRef, refresh},
     fastlog:debug("[World] Revising NodeSet = ~p~n", [NodeList]),
     [ets:insert(Tab, dxkit_net:connect(N)) || N <- NodeList, 
                                               N =/= node()],
-    gen_event:notify(dxkit_event_handler, {world, refresh}),
+    spawn(fun() -> 
+        gen_event:notify(dxkit_event_handler, 
+            {world, refresh}) end),                                          
     set_timer(Timeout),
     {noreply, State};
 handle_info(_, State) ->
@@ -182,7 +182,9 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
             dxkit_net:connect(Node)
     end,
     ets:insert(Tab, NodeInfo),
-    gen_event:notify(dxkit_event_handler, {world, {NodeStatus, NodeInfo}}),
+    spawn(fun() -> 
+        gen_event:notify(dxkit_event_handler, 
+            {world, {NodeStatus, NodeInfo}}) end),
     {noreply, State}.
 
 refresh_interval(Config) ->

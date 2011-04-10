@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: Supervisor for HTTP Services
+%% Erlang System Monitoring: Networking Services Supervisor
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,11 +22,16 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
+%%
+%% @doc This module handles the supervision tree for network management (which
+%% includes discovery and monitoring services). 
+%%
+%% -----------------------------------------------------------------------------
 
--module(dxweb_http_server).
--author('Tim Watson <watson.timothy@gmail.com>').
+-module(dxkit_net_sup).
 -behaviour(supervisor).
 
+%% API
 -export([start_link/1]).
 -export([init/1]).
 
@@ -35,20 +40,25 @@
 %% ===================================================================
 
 start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
+    io:format("dxkit_net_sup: Start Args = ~p~n", [StartArgs]),
+    supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
-init(StartArgs) ->
+init(WorldArgs) ->
+    io:format("dxkit_net_sup: WorldArgs Args = ~p~n", [WorldArgs]),
     Children = [
-        {dxweb_http_handler,
-            {dxweb_http_handler, start_link, [StartArgs]},
-            permanent, 5000, worker, [gen_server]},
-        {dxweb_session,
-            {dxweb_session, start_link, []},
-            permanent, 5000, worker, [gen_server]}
+        {dxkit_net,
+            {dxkit_net, start_link, []},
+             permanent, 15000, worker, [gen_server]},
+        {dxkit_world_server,
+            {dxkit_world_server, start_link, [WorldArgs]},
+             permanent, 5000, worker, [gen_server]}
+        %% ,
+        %% {dxkit_samplers,
+        %%     {dxkit_sampler, start_link, []},
+        %%      permanent, infinity, supervisor, dynamic}
     ],
-    %% NB: these guys should go down together, if at all
-    {ok, {{one_for_all, 10, 10}, Children}}.
+    {ok, {{one_for_one, 10, 10}, Children}}.

@@ -1,6 +1,6 @@
 %% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: Bridges a process to dxkit_event_handler
+%% Erlang System Monitoring: Event consumer module.
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -23,51 +23,53 @@
 %% THE SOFTWARE.
 %% ------------------------------------------------------------------------------
 %%
-%% @doc TBC
+%% @doc When used in conjunction with eper, this module handles monitoring events.
+%% One module is created per active subscriber, with the subscriber's client key 
+%% providing a reply-to mechanism outside this application.
+%%
+%% This process runs on the `nodewatch' host, not the node(s) being monitored.
 %%
 %% ------------------------------------------------------------------------------
 
--module(dxweb_event_bridge).
+-module(dxkit_event_consumer, [SubscriberKey, Node, Subscriptions]).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(gen_event).
 
--export([init/1
-        ,handle_event/2
-        ,handle_call/2
-        ,handle_info/2
-        ,terminate/2
-        ,code_change/3]).
+-export([init/1,
+         terminate/1,
+         tick/2,
+         collectors/0,
+         config/2]).
 
--include("../include/types.hrl").
+-include("../include/nodewatch.hrl").
 
--record(state, {logfile, level}).
+-record(state, {node}).
 
-init([]) ->
-  {ok, #state{}}.
+init(Node) -> 
+    #state{node=Node}.
 
-handle_event(_Message, State) ->
-  {ok, State}.
+terminate(_) -> ok.
 
-%%
-%% @private
-%% 
-handle_call(_, State) ->
-  {ok, ignored, State}.
+collectors() -> 
+    [subscription_to_collector_tag(S) || 
+        S <- Subscriptions,
+        S#subscription.mode == instrument].
 
-%%
-%% @private
-%% 
-handle_info(_Info, State) ->
-  {ok, State}.
+config(State, _) -> State.
 
-%%
-%% @private
-%% 
-terminate(_Reason, _State) ->
-  ok.
+tick(State, []) ->
+    State;
+tick(State, [[]]) ->
+    State;
+tick(#state{node=Node}=State, Data) ->
+    dxkit_pubsub:publish(SubscriberKey, Node, Data),
+    State.
 
-%%
-%% @private
-%% 
-code_change(_OldVsn, State, _Extra) ->
-  {ok, State}.
+%% Internal API
+
+subscription_to_collector_tag(
+    #subscription{sensor=system}) -> prfSys;
+subscription_to_collector_tag(
+    #subscription{sensor=network}) -> prfNet;
+subscription_to_collector_tag(
+    #subscription{sensor=process}) -> prfPrc.
+

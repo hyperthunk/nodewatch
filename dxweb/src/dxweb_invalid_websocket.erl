@@ -1,6 +1,6 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: Supervisor for HTTP Services
+%% Erlang System Monitoring Dashboard: Session (utilities) API
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -21,34 +21,23 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
+%%
+%% @doc Placeholder for a websocket session, yet to be established.
+%% All functions crash the calling process.
+%% ------------------------------------------------------------------------------
 
--module(dxweb_http_server).
+-module(dxweb_invalid_websocket).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(supervisor).
+-export([raw/0, get/1, send/1]).
 
--export([start_link/1]).
--export([init/1]).
+%% TODO: Use dynapi for this instead of doing the boilerplate by hand
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
+raw() ->
+    exit(no_websocket).
 
-start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
+get(_) ->
+    exit(no_websocket).
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
-
-init(StartArgs) ->
-    Children = [
-        {dxweb_http_handler,
-            {dxweb_http_handler, start_link, [StartArgs]},
-            permanent, 5000, worker, [gen_server]},
-        {dxweb_session,
-            {dxweb_session, start_link, []},
-            permanent, 5000, worker, [gen_server]}
-    ],
-    %% NB: these guys should go down together, if at all
-    {ok, {{one_for_all, 10, 10}, Children}}.
+send(_) ->
+    exit(no_websocket).

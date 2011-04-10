@@ -33,17 +33,16 @@
 -author('Tim Watson <watson.timothy@gmail.com>').
 -behaviour(gen_server2).
 
--export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,terminate/2
-        ,code_change/3]).
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
 -export([start/0, start_link/0, stop/0]).
 
--export([store/2
-        ,remove/2
+-export([store/2, remove/2
         ,lookup/1
         ,register/1
         ,unregister/1]).

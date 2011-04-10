@@ -35,6 +35,7 @@
 %% ===================================================================
 
 start_link(StartArgs) ->
+    io:format("dxkit_sup: Start Args = ~p~n", [StartArgs]),
     supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
 
 %% ===================================================================
@@ -43,15 +44,16 @@ start_link(StartArgs) ->
 
 init(StartArgs) ->
     WorldArgs = proplists:get_value(world, StartArgs, []),
+    io:format("dxkit_sup: WorldArgs = ~p~n", [WorldArgs]),
     Children = [
+        {dxkit_net_sup,
+            {dxkit_net_sup, start_link, [WorldArgs]},
+             permanent, infinity, supervisor, [supervisor]},
         {dxkit_event_handler, 
             {gen_event, start_link, [{local, dxkit_event_handler}]},
-             permanent, 5000, worker, dynamic},
-        {dxkit_net,
-            {dxkit_net, start_link, []},
-             permanent, 15000, worker, [gen_server]},
-        {dxkit_world_server,
-            {dxkit_world_server, start_link, [WorldArgs]},
-             permanent, 10000, worker, [gen_server]}
+             permanent, 5000, worker, dynamic}
+%       , {dxweb_event_bridge,
+%            {dxweb_event_bridge, start_link, []},
+%             permanent, 5000, worker, [gen_server]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

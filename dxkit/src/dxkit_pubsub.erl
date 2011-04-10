@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: Supervisor for HTTP Services
+%% Erlang System Monitoring Tools: Subscription Management Server
 %%
-%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,33 +22,24 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: April 2011
+%%
+%% @doc Manages pub/sub for registered subscriptions.
+%%
+%% -----------------------------------------------------------------------------
 
--module(dxweb_http_server).
--author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(supervisor).
+-module(dxkit_pubsub).
 
--export([start_link/1]).
--export([init/1]).
+-export([subscribe/2, publish/3]).
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
+%%
+%% Public API
+%%
 
-start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
+subscribe(_User, _SubscriberKey) ->
+    ok.
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
-
-init(StartArgs) ->
-    Children = [
-        {dxweb_http_handler,
-            {dxweb_http_handler, start_link, [StartArgs]},
-            permanent, 5000, worker, [gen_server]},
-        {dxweb_session,
-            {dxweb_session, start_link, []},
-            permanent, 5000, worker, [gen_server]}
-    ],
-    %% NB: these guys should go down together, if at all
-    {ok, {{one_for_all, 10, 10}, Children}}.
+publish(_SubscriberKey, _Node, _Data) ->
+    ok.

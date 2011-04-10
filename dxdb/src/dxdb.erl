@@ -31,41 +31,70 @@
 %% -----------------------------------------------------------------------------
 -module(dxdb).
 -author('Tim Watson <watson.timothy@gmail.com>').
--export([add_user/2
-        ,check_user/2
-        ,subscribe_user/3]).
+-export([user/2,
+         add_user/2,
+         check_user/1,
+         check_user/2,
+         add_subscription/4,
+         find_user_subscriptions/1,
+         find_user_subscriptions_for_node/2,
+         find_all_subscriptions_for_node/1]).
 
 -include_lib("stdlib/include/qlc.hrl").
--include("../include/types.hrl").
+-include("../include/nodewatch.hrl").
+
+%%
+%% @doc Utility function for creating a new user record.
+%%
+-spec(user(username(), string()) -> #user{}).
+user(Name, Password) ->
+    <<Digest:160>> = crypto:sha(Password),
+    #user{name=Name, password=Digest}.
 
 %%
 %% @doc Adds a user to the database.
 %%
 -spec(add_user(username(), string()) -> ok | {error, term()}).
 add_user(Name, Password) ->
-    <<Digest:160>> = crypto:sha(Password),
-    write(#user{name=Name, password=Digest}).
+    write(user(Name, Password)).
 
 %%
-%% @doc Subscribe a user to a specific set of events, using
-%% the specified mode (active or passive)
+%% @doc Subscribe a user to a specific set of events on a 
+%% node, using the specified mode.
 %%
-subscribe_user(#user{ name=Name }, Sensor, Mode) ->
-    subscribe_user(Name, Sensor, Mode);
-subscribe_user(User, Sensor, Mode) ->
-    Incr = mnesia:dirty_update_counter('dxdb.seq', 
-                                       'subscription.nextkey', 1),
-    transaction(fun() ->
-        mnesia:write(#subscription{id = Incr,  
-                                   user = {user, User},
-                                   mode = Mode,
-                                   sensor = Sensor})
-    end).
+add_subscription(#user{ name=Name }, Node, Sensor, Mode) ->
+    add_subscription(Name, Node, Sensor, Mode);
+add_subscription(User, Node, Sensor, Mode) ->
+    %% Incr = mnesia:dirty_update_counter('dxdb.seq', 
+    %%                                    'subscription.nextkey', 1),
+    write(#subscription{id = {User, Node, Sensor},
+                        user = User,
+                        node = Node,
+                        sensor = Sensor,
+                        mode = Mode}).
+
+find_user_subscriptions(UserName) ->
+    Q = qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.user == UserName]),
+    transaction(fun() -> qlc:e(Q) end).
+
+find_user_subscriptions_for_node(UserName, Node) ->
+    Q = qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.user == UserName,
+                    S#subscription.node == Node]),
+    transaction(fun() -> qlc:e(Q) end).
+
+find_all_subscriptions_for_node(Node) ->
+    Q = qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.node == Node]),
+    transaction(fun() -> qlc:e(Q) end).
 
 %%
 %% @doc Checks a user name and password against the database.
 %%
--spec(check_user(username(), string()) -> true | false).
+check_user(#user{name=Name, password=Password}) ->
+    check_user(Name, Password).
+
 check_user(Name, Password) ->
     <<Digest:160>> = crypto:sha(Password),
     Q = qlc:q([X#user.name || X <- mnesia:table(user), 
@@ -75,12 +104,12 @@ check_user(Name, Password) ->
     length(Val) == 1.
 
 write(Item) ->
-    transaction(fun() -> mnesia:write(Item) end).
+    transaction(fun() -> mnesia:write(Item), Item end).
 
 transaction(Fun) ->
     case mnesia:transaction(Fun) of
-        {atomic, _} ->
-            ok;
+        {atomic, Value} ->
+            Value;
         {aborted, Reason} ->
             {error, Reason}
     end.
