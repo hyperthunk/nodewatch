@@ -50,20 +50,17 @@ add_user(Name, Password) ->
 %% @doc Subscribe a user to a specific set of events, using
 %% the specified mode (active or passive)
 %%
+subscribe_user(#user{ name=Name }, Sensor, Mode) ->
+    subscribe_user(Name, Sensor, Mode);
 subscribe_user(User, Sensor, Mode) ->
-    Write = 
-        fun() ->
-            mnesia:write_lock_table(subscription),
-            ID = case mnesia:table_info(subscription, size) == 0 of
-                true ->  1;
-                false -> mnesia:last(subscription)
-            end,
-            mnesia:write(#subscription{id = ID,  
-                                       user = User,
-                                       mode = Mode,
-                                       sensor = Sensor})
-        end,
-    transaction(Write).
+    Incr = mnesia:dirty_update_counter('dxdb.seq', 
+                                       'subscription.nextkey', 1),
+    transaction(fun() ->
+        mnesia:write(#subscription{id = Incr,  
+                                   user = {user, User},
+                                   mode = Mode,
+                                   sensor = Sensor})
+    end).
 
 %%
 %% @doc Checks a user name and password against the database.
@@ -71,10 +68,11 @@ subscribe_user(User, Sensor, Mode) ->
 -spec(check_user(username(), string()) -> true | false).
 check_user(Name, Password) ->
     <<Digest:160>> = crypto:sha(Password),
-    Found = qlc:q([X#user.name || X <- mnesia:table(user), 
-                                  X#user.name == Name, 
-                                  X#user.password == Digest]),
-    length(Found) == 1.
+    Q = qlc:q([X#user.name || X <- mnesia:table(user), 
+                              X#user.name == Name, 
+                              X#user.password == Digest]),
+    {atomic, Val} = mnesia:transaction(fun() -> qlc:e(Q) end),
+    length(Val) == 1.
 
 write(Item) ->
     transaction(fun() -> mnesia:write(Item) end).

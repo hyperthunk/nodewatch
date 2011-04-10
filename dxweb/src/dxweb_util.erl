@@ -26,13 +26,27 @@
 -module(dxweb_util).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([make_uuid/0
+-export([marshal/1
+        ,unmarshal/1
+        ,make_uuid/0
         ,header/2
         ,parse_cookie/1
         ,cookie_item_fold/2]).
 
 -include("dxweb.hrl").
 -include_lib("misultin/include/misultin.hrl").
+
+%%
+%% @doc Serializes the supplied term/data.
+%%
+marshal(Data) ->
+    jsx:term_to_json(Data).
+
+%%
+%% @doc Deserializes the supplied data.
+%%
+unmarshal(Data) ->
+    jsx:json_to_term(Data).
 
 %%
 %% @doc Makes a unique session id (locks on erlang:now/0). The ID is not unqiue
@@ -44,15 +58,15 @@ make_uuid() ->
 header(Header, Req) ->
     misultin_utility:header_get_value(Header, Req:get(headers)).
 
-parse_cookie(Req) -> 
+parse_cookie(Req) ->
     Raw = Req:raw(),
-    case proplists:get_value('Cookie', Raw#req.headers) of 
-        undefined -> []; 
-        RawCookies -> 
-            CookieKeyValues = re:split(RawCookies, "; ", [{return, list}]), 
-            lists:foldl(cookie_item_fold, [], CookieKeyValues)
+    case proplists:get_value('Cookie', Raw#req.headers) of
+        undefined -> [];
+        RawCookies ->
+            CookieKeyValues = re:split(RawCookies, "; ", [{return, list}]),
+            lists:foldl(fun cookie_item_fold/2, [], CookieKeyValues)
     end.
 
-cookie_item_fold(CookieItem, Acc) -> 
-    [Key, Value] = re:split(CookieItem, "=", [{return, list}, {parts, 2}]), 
+cookie_item_fold(CookieItem, Acc) ->
+    [Key, Value] = re:split(CookieItem, "=", [{return, list}, {parts, 2}]),
     [{Key, Value} | Acc].

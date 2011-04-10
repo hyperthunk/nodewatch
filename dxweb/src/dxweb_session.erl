@@ -1,6 +1,6 @@
 %% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: 
+%% Erlang System Monitoring Dashboard: Session (utilities) API
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -30,16 +30,42 @@
 -module(dxweb_session).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([create/1]).
+-export([establish_session/1
+        ,send/2
+        ,send_term/2]).
 
-create(Req) ->
+%%
+%% @doc Converts `Term' to json and sends it to 
+%% any websocket registered, against the supplied `SessionID'.
+%%
+send(SessionID, Data) ->
+    send_term(SessionID, jsx:term_to_json(Data)).
+
+%%
+%% @doc Sends `Term' directly to any websocket registered
+%% against the supplied `SessionID'.
+%%
+send_term(SessionID, Term) ->
+    case dxweb_websocket_registry:lookup(SessionID) of
+        error ->
+            {error, {invalid_sid, SessionID}};
+        WebSock ->
+            WebSock:send(Term)
+    end.
+
+%%
+%% @doc Creates a new session, authenticating the user's
+%% credentials and returning a valid session-id (or the atom)
+%% or {error, Reason} if login fails.
+%%
+establish_session(Req) ->
     case validate_user(auth_credentials(Req)) of
         true ->
             UUID = dxweb_util:make_uuid(),
             {registered, UUID} = dxweb_websocket_registry:register(UUID),
             UUID;
         _NoAuth -> 
-            invalid
+            {error, <<"login failed">>}
     end.
 
 auth_credentials(Req) ->

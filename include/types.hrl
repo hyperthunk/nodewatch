@@ -43,7 +43,7 @@
 %% Represents a subscription - these are *only* stored against a specific user
 -record(subscription, {
     id                  :: integer(),
-    user                :: username(),
+    user                :: {user, username()},
     mode    = passive   :: mode(),
     sensor  = undefined :: sensor()
 }).

@@ -1,6 +1,6 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Database: Top Level Supervisor
+%% Erlang System Monitoring Dashboard: Bridges a process to dxkit_event_handler
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -21,38 +21,53 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
+%%
+%% @doc TBC
+%%
+%% ------------------------------------------------------------------------------
 
--module(dxdb_setup).
+-module(dxweb_event_bridge).
 -author('Tim Watson <watson.timothy@gmail.com>').
+-behaviour(gen_event).
+
+-export([init/1
+        ,handle_event/2
+        ,handle_call/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3]).
+
 -include("../include/types.hrl").
--include("dxdb.hrl").
 
-%% API
--export([create_db/0, create_schema/0]).
+-record(state, {logfile, level}).
 
-create_db() ->
-    mnesia:create_schema([node()]),
-    application:start(mnesia, permanent).
+init([]) ->
+  {ok, #state{}}.
 
-create_schema() ->
-    ok = create_seq(),
-    Tabs = [{user, record_info(fields, user)}, 
-            {subscription, record_info(fields, subscription)}],
-    [create_table(T, Attrs) || {T, Attrs} <- Tabs],
-    mnesia:wait_for_tables(['dxdb.seq', user, subscription], infinity).
+handle_event(_Message, State) ->
+  {ok, State}.
 
-create_seq() ->
-    create_table('dxdb.seq', set, record_info(fields, 'dxdb.seq')),
-    mnesia:dirty_write(#'dxdb.seq'{ key='subscription.nextkey',
-                                    nextkey=0 }).
+%%
+%% @private
+%% 
+handle_call(_, State) ->
+  {ok, ignored, State}.
 
-create_table(Name, Attrs) ->
-    create_table(Name, ordered_set, Attrs).
+%%
+%% @private
+%% 
+handle_info(_Info, State) ->
+  {ok, State}.
 
-create_table(Name, Type, Attrs) ->
-    Def = [{type, Type},
-           {disc_copies, [node()]},
-           {attributes, Attrs}],
-    mnesia:create_table(Name, Def),
-    mnesia:wait_for_tables([Name], infinity).
+%%
+%% @private
+%% 
+terminate(_Reason, _State) ->
+  ok.
+
+%%
+%% @private
+%% 
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.

@@ -4,6 +4,7 @@
   {vsn,"0.0.1"},
   {mod,{appstart_loader,[]}},
   {modules,[dxkit
+           ,dxkit_event_log
            ,dxkit_net
            ,dxkit_sup
            ,dxkit_utils

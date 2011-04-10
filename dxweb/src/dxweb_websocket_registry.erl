@@ -1,6 +1,6 @@
 %% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Dashboard: Session (Client UUID) Registry
+%% Erlang System Monitoring Dashboard: WebSocket (to ID) Session Registry
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -79,32 +79,32 @@ stop() ->
 %%
 %% @doc Registers a new session and returns the session id.
 %%
-register(UUID) ->
-    dispatch_call({register, UUID}).
+register(SessionID) ->
+    dispatch_call({register, SessionID}).
 
 %%
 %% @doc Stores a websocket reference against a given session
 %%
-store(UUID, WebSock) ->
-    dispatch_call({store, UUID, WebSock}).
+store(SessionID, WebSock) ->
+    dispatch_call({store, SessionID, WebSock}).
 
 %%
 %% @doc Removes a websocket reference from the list of websockets for a session
 %%
-remove(UUID, WebSock) ->
-    dispatch_call({remove, UUID, WebSock}).
+remove(SessionID, WebSock) ->
+    dispatch_call({remove, SessionID, WebSock}).
 
 %%
 %% @doc Gets a list of all websockets references for the specified session
 %%
-lookup(UUID) ->
-    dispatch_call({lookup, UUID}).
+lookup(SessionID) ->
+    dispatch_call({lookup, SessionID}).
 
 %%
 %% @doc Removes a session and clears all its websocket references.
 %%
-unregister(UUID) ->
-    dispatch_call({unregister, UUID}).
+unregister(SessionID) ->
+    dispatch_call({unregister, SessionID}).
 
 %% @hidden
 dispatch_call(Msg) ->
@@ -119,18 +119,18 @@ init(_) ->
     {ok, #state{ sessions=dict:new() }}.
 
 %% @hidden
-handle_call({register, UUID}, _From, #state{ sessions=S }=State) ->
-    {reply, {registered, UUID}, State#state{ sessions=dict:store(UUID, [], S) }};
-handle_call({unregister, UUID}, _From, #state{ sessions=S }=State) ->
-    {reply, unregistered, State#state{ sessions=dict:erase(UUID, S) }};
-handle_call({store, UUID, WebSocket}, _From, #state{ sessions=S }=State) ->
-    {reply, stored, State#state{ sessions=dict:append(UUID, WebSocket, S) }};
-handle_call({remove, UUID, WebSocket}, _From, #state{ sessions=Sessions }=State) ->
-    {ok, WebSocks} = dict:find(UUID, Sessions),
+handle_call({register, SessionID}, _From, #state{ sessions=S }=State) ->
+    {reply, {registered, SessionID}, State#state{ sessions=dict:store(SessionID, [], S) }};
+handle_call({unregister, SessionID}, _From, #state{ sessions=S }=State) ->
+    {reply, unregistered, State#state{ sessions=dict:erase(SessionID, S) }};
+handle_call({store, SessionID, WebSocket}, _From, #state{ sessions=S }=State) ->
+    {reply, stored, State#state{ sessions=dict:append(SessionID, WebSocket, S) }};
+handle_call({remove, SessionID, WebSocket}, _From, #state{ sessions=Sessions }=State) ->
+    {ok, WebSocks} = dict:find(SessionID, Sessions),
     WebSocks2 = [S || S <- WebSocks, S =/= WebSocket],
-    {reply, stored, State#state{ sessions=dict:store(UUID, WebSocks2, Sessions) }};
-handle_call({lookup, UUID}, _From, #state{ sessions=S }=State) ->
-    {reply, dict:find(UUID, S), State}.
+    {reply, stored, State#state{ sessions=dict:store(SessionID, WebSocks2, Sessions) }};
+handle_call({lookup, SessionID}, _From, #state{ sessions=S }=State) ->
+    {reply, dict:find(SessionID, S), State}.
 
 handle_cast(stop, State) ->
     {stop, normal, State};

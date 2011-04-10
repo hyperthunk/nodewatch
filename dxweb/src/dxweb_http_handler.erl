@@ -43,38 +43,60 @@ start_link(Options) ->
     StartOpts = lists:foldl(F, Options, InternalOpts),
     misultin:start_link(StartOpts).
 
-websocket_handler_loop(_Ws) ->
-    ok.
-
 http_handler_loop(Req) ->
     PathComponents = Req:resource([lowercase, urldecode]),
     SID = check_session(Req),
     handle_http_request(Req, PathComponents, SID).
 
-check_session(Req) ->
-    Cookie = dxweb_util:parse_cookie(Req),
-    proplists:get_value(sid, Cookie, invalid).
-    
-handle_http_request(Req, invalid, ["service", "login"]) ->
+websocket_handler_loop(Ws) ->
+    SID = get_ws_client_id(Ws),
+    dxweb_websocket_registry:store(SID, Ws),
+    handle_websocket(Ws).
+
+handle_http_request(Req, _, ["service", "login"]) ->
     case dxweb_session:login(Req) of
-        invalid ->
-            handle_http_request(Req, invalid, []);
+        {error, Reason} ->
+            Req:respond(401, [dxweb_util:marshal(Req, Reason)]);
         SID ->
             Req:ok([{"Content-Type", "text/plain"},
                     {"Set-Cookie", "sid=" ++ SID}], "login successful.")
     end;
-handle_http_request(Req, invalid, _) ->
-    Req:respond(401);
 handle_http_request(Req, _, ["static"|ResourcePath]) ->
     Req:file(resolve_path(ResourcePath));
 handle_http_request(Req, SID, ["service", Resource|Rest]) ->
     Mod = "dxweb_" ++ Resource ++ "_controller",
     apply(Mod, string:to_lower(atom_to_list(Req:get(method))), [Req,SID|Rest]).
 
+%%
+%% NB: This callback (loop) simply idles the websocket to keep it open,
+%% since websocket traffic is only used for outbound event publication
+%%
+handle_websocket(Ws) ->
+    %% TODO: because this loop sits idle for the most part, a hibernating
+    %% gen_server might make for a better home - can misultin do this?
+    receive
+        closed ->
+            %% NB: the {ws_autoexit, false} option means we need to 
+            %% manually ensure that this process exits - so no tail call here
+            SessionID = get_ws_client_id(Ws),
+            fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]),
+            dxweb_websocket_registry:remove(SessionID, Ws);
+        Other ->
+            fastlog:debug("Websocket *other* => ~p~n", [Other]),
+            handle_websocket(Ws)
+    end.
+
+get_ws_client_id(Ws) ->
+    Path = Ws:get(path),
+    fastlog:debug("Websocket (path) = ~p~n", [Path]),
+    ["service", ClientID|_] = string:tokens(Path, "/"),
+    ClientID.
+
+check_session(Req) ->
+    Cookie = dxweb_util:parse_cookie(Req),
+    proplists:get_value(sid, Cookie, invalid).
+
 resolve_path(ResourcePath) ->
     BaseDir = filename:join(code:priv_dir(dxweb), "www"),
     SubDir = lists:foldl(fun filename:join/2, [], lists:reverse(ResourcePath)),
     filename:join(BaseDir, SubDir).
-
-%% handle_websocket(Ws) ->
-%%    handle_websocket(Ws).
