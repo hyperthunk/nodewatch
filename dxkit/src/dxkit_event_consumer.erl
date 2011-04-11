@@ -1,6 +1,6 @@
 %% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring: Event consumer module.
+%% Erlang System Monitoring: Event Consumer.
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -34,6 +34,9 @@
 -module(dxkit_event_consumer, [SubscriberKey, Node, Subscriptions]).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
+-export([name/0,
+         target/0]).
+
 -export([init/1,
          terminate/1,
          tick/2,
@@ -48,6 +51,9 @@ init(Node) ->
     #state{node=Node}.
 
 terminate(_) -> ok.
+
+name() -> SubscriberKey.
+target() -> Node.
 
 collectors() -> 
     [subscription_to_collector_tag(S) || 

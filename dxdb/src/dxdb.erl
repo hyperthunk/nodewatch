@@ -31,17 +31,25 @@
 %% -----------------------------------------------------------------------------
 -module(dxdb).
 -author('Tim Watson <watson.timothy@gmail.com>').
+
 -export([user/2,
          add_user/2,
          check_user/1,
          check_user/2,
-         add_subscription/4,
-         find_user_subscriptions/1,
+         add_subscription/4]).
+
+-export([find_user_subscriptions/1,
          find_user_subscriptions_for_node/2,
-         find_all_subscriptions_for_node/1]).
+         find_all_subscriptions_for_node/1,
+         find_sensors_for_node/2,
+         find_instrumented_sensors_for_node/2]).
 
 -include_lib("stdlib/include/qlc.hrl").
 -include("../include/nodewatch.hrl").
+
+%%
+%% CrUD API Calls 
+%%
 
 %%
 %% @doc Utility function for creating a new user record.
@@ -73,21 +81,44 @@ add_subscription(User, Node, Sensor, Mode) ->
                         sensor = Sensor,
                         mode = Mode}).
 
+%%
+%% Finder API Calls 
+%%
+
+%%
+%% @doc Lists all subscriptions for `User'.
+%%
 find_user_subscriptions(UserName) ->
-    Q = qlc:q([S || S <- mnesia:table(subscription),
-                    S#subscription.user == UserName]),
+    Q = query_subscriptions({user, UserName}),
     transaction(fun() -> qlc:e(Q) end).
 
+%%
+%% @doc Lists all the subscriptions which `User' has for `Node'.
+%%
 find_user_subscriptions_for_node(UserName, Node) ->
-    Q = qlc:q([S || S <- mnesia:table(subscription),
-                    S#subscription.user == UserName,
-                    S#subscription.node == Node]),
+    Q = query_subscriptions(UserName, Node),
     transaction(fun() -> qlc:e(Q) end).
 
+%%
+%% @doc Lists all subscriptions for `Node', regardless of the user.
+%%
 find_all_subscriptions_for_node(Node) ->
-    Q = qlc:q([S || S <- mnesia:table(subscription),
-                    S#subscription.node == Node]),
+    Q = query_subscriptions({node, Node}),
     transaction(fun() -> qlc:e(Q) end).
+
+%%
+%% @doc Lists all the sensors which `User' has enabled for `Node'.
+%%
+find_sensors_for_node(User, Node) ->
+    Q = query_subscriptions(User, Node),
+    transaction(fun() -> qlc:fold(fun collect_sensors/2, [], Q) end).
+
+find_instrumented_sensors_for_node(User, Node) ->
+    Q = qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.user == User,
+                    S#subscription.node == Node,
+                    S#subscription.mode == instrument]),
+    transaction(fun() -> qlc:fold(fun collect_sensors/2, [], Q) end).
 
 %%
 %% @doc Checks a user name and password against the database.
@@ -103,6 +134,18 @@ check_user(Name, Password) ->
     {atomic, Val} = mnesia:transaction(fun() -> qlc:e(Q) end),
     length(Val) == 1.
 
+%%
+%% Internal API
+%%
+
+collect_sensors(In, Acc) ->
+    case In#subscription.sensor of
+        undefined ->
+            Acc;
+        Sensor ->
+            [Sensor|Acc]
+    end.
+
 write(Item) ->
     transaction(fun() -> mnesia:write(Item), Item end).
 
@@ -113,3 +156,15 @@ transaction(Fun) ->
         {aborted, Reason} ->
             {error, Reason}
     end.
+
+query_subscriptions({node, Node}) ->
+    qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.node == Node]);
+query_subscriptions({user, UserName}) ->
+    qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.user == UserName]).
+
+query_subscriptions(UserName, Node) ->
+    qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.user == UserName,
+                    S#subscription.node == Node]).

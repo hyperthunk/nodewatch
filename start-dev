@@ -10,6 +10,7 @@ BOOT="-boot $REL_DIR/setup/start"
 CONFIG="-config $REL_DIR/setup/sys.config"
 START_ARGS="$SYS $BOOT $CONFIG"
 HOST=`hostname`
+NAME='-name nw-dev@$HOST'
 
 if [ ! -d "$DEV_DIR" ]; then
     echo "Setting up development environment for first time..."
@@ -19,7 +20,7 @@ if [ ! -d "$DEV_DIR" ]; then
     SYS="-sys $REL_DIR/setup/install"
     BOOT="-boot $REL_DIR/setup/install"
     CONF="-config $REL_DIR/files/app.config"
-    eval "erl -name nw-dev@$HOST $SYS $BOOT -embedded $CONF"
+    eval "erl $NAME $SYS $BOOT -embedded $CONF"
 fi
 
 cd "$DEV_DIR"
@@ -47,7 +48,7 @@ do
     esac
 done
 
-EXEC_CMD="erl -name nw-dev@$HOST -pa `pwd` $START_ARGS"
+EXEC_CMD="erl $NAME -pa `pwd` $START_ARGS"
 echo "$EXEC_CMD"
 eval "$EXEC_CMD"
 

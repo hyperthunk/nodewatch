@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring: Networking Services Supervisor
+%% Erlang System Monitoring Tools: Instrumented Sensor Supervision Tree
 %%
-%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,43 +22,59 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: April 2011
 %%
-%% @doc This module handles the supervision tree for network management (which
-%% includes discovery and monitoring services). 
+%% @doc Manages dynamic subscription to instrumented sensors.
 %%
 %% -----------------------------------------------------------------------------
-
--module(dxkit_net_sup).
+-module(dxkit_subscribers).
 -behaviour(supervisor).
 
 %% API
--export([start_link/1]).
+-export([start_link/0]).
+-export([subscribe/2, unsubscribe/1]).
 -export([init/1]).
+
+-include("../include/nodewatch.hrl").
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
-start_link(StartArgs) ->
-    io:format("dxkit_net_sup: Start Args = ~p~n", [StartArgs]),
-    supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+subscribe(User, SubscriberKey) ->
+    [ start_child(SubscriberKey, Node, Sensors) || 
+        {Node, Sensors} <- [ 
+            subscriptions(User, S#subscription.node) ||
+                S <- dxdb:find_user_subscriptions(User) ] ].
+
+unsubscribe(SubscriberKey) ->
+    ok = dxkit_sensor:stop(SubscriberKey),
+    supervisor:delete_child(?MODULE, SubscriberKey).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
-init(WorldArgs) ->
-    io:format("dxkit_net_sup: WorldArgs Args = ~p~n", [WorldArgs]),
-    Children = [
-        {dxkit_net,
-            {dxkit_net, start_link, []},
-             permanent, 5000, worker, [gen_server]},
-        {dxkit_world_server,
-            {dxkit_world_server, start_link, [WorldArgs]},
-             permanent, 5000, worker, [gen_server]}
-        %% ,
-        %% {dxkit_samplers,
-        %%     {dxkit_sampler, start_link, []},
-        %%      permanent, infinity, supervisor, dynamic}
-    ],
-    {ok, {{one_for_one, 5, 5}, Children}}.
+init(_) ->
+    %% TODO: review restart frequency settings
+    {ok, {{one_for_one, 0, 0}, []}}.
+
+%% 
+%% Internal API
+%%
+
+subscriptions(User, Node) ->
+    Found = dxdb:find_instrumented_sensors_for_node(User, Node),
+    {Node, Found}.
+
+start_child(Subscriber, Node, Sensors) ->
+    Consumer = dxkit_event_consumer:new(Subscriber, Node, Sensors),
+    ChildSpec = {Consumer:name(),  
+                {dxkit_sensor, start, [Consumer]},
+                 transient, 5000, worker, dynamic},
+    supervisor:start_child(?MODULE, ChildSpec).

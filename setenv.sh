@@ -10,6 +10,7 @@ case "$NODEWATCH_SETENV" in
     *)
         export PWD=`pwd`
         export ERL_LIBS="$PWD:$ERL_LIBS"
+        export DXKIT_NET_CONF="$PWD/release/files"
         export NODEWATCH_SETENV="true"
         echo "Environment Setup Complete."
 esac

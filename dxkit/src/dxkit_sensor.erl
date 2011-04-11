@@ -1,8 +1,8 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Subscription Management Server
+%% Erlang System Monitoring: Sensor.
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +21,24 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: April 2011
+%% ------------------------------------------------------------------------------
 %%
-%% @doc Manages pub/sub for registered subscriptions.
+%% @doc When used in conjunction with eper, this module handles monitoring events.
+%% One module is created per active subscriber, with the subscriber's client key 
+%% providing a reply-to mechanism outside this application.
 %%
-%% -----------------------------------------------------------------------------
-
--module(dxkit_pubsub).
-
--export([subscribe/2, publish/3]).
-
+%% This process runs on the `nodewatch' host, not the node(s) being monitored.
 %%
-%% Public API
-%%
+%% ------------------------------------------------------------------------------
 
-subscribe(_User, _SubscriberKey) ->
-    ok.
+-module(dxkit_sensor).
+-author('Tim Watson <watson.timothy@gmail.com>').
 
-publish(_SubscriberKey, _Node, _Data) ->
-    ok.
+-export([start/1, stop/1]).
+
+start(Consumer) ->
+    Pid = prfHost:start(Consumer:name(), Consumer:target(), Consumer),
+    {ok, Pid}.
+
+stop(Name) ->
+    prfHost:stop(Name).

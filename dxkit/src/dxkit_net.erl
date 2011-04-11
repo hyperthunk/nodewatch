@@ -52,7 +52,8 @@
 -export([start/0, start_link/0]).
 -export([get_blacklist/0, clear_blacklist/0,
          connect/1, find_nodes/0, find_nodes/1,
-         force_connect/1, update_node/2]).
+         force_connect/1, update_node/2,
+         hostname/0, prim_ip/1]).
 
 %%
 %% Public API
@@ -187,28 +188,30 @@ update_node(Node, _Status)
 %% @hidden
 init(_) ->
     process_flag(trap_exit, true),
-    Home = case init:get_argument(home) of
-        {ok, [[H]]} -> [H];
-        _ ->
-            case os:getenv("HOME") of
-                false ->
-                    [];
-                Path ->
-                    Path
-            end
+    HOME = case os:getenv("DXKIT_NET_CONF") of
+        false ->
+            ".";
+        Path ->
+            Path
     end,
-    SearchPath = [".", Home, code:priv_dir(dxkit)],
+    SearchPath = [HOME, code:priv_dir(dxkit)],
     case file:path_consult(SearchPath, ".net.conf") of
         {ok, Terms, _} ->
             Host = hostname(),
             InetRC = inet:get_rc(),
             Search = read_conf(search, InetRC),
-            IP = case length(Search) > 0 of
+            {IP, RevisedConf} = case length(Search) > 0 of
                 true ->
-                    HN = hostname(Host, Search),
-                    prim_ip(HN#h_name.fullname);
+                    HN = hostname(Host, hd(Search)),
+                    PrimIP = prim_ip(HN#h_name.fullname),
+                    OrigHosts = read_conf(hosts, Terms),
+                    RevisedHosts = 
+                        [ (hostname(Host, S))#h_name.fullname || S <- Search ],
+                    Updated = lists:keyreplace(hosts, 1, Terms,
+                                    {hosts, lists:concat([OrigHosts, RevisedHosts])}),
+                    {PrimIP, Updated};
                 false ->
-                    prim_ip(Host)
+                    {prim_ip(Host), Terms}
             end,
             ets:new(dx.net.workers,
                     [named_table, protected,
@@ -229,7 +232,7 @@ init(_) ->
              {hostname, Host},
              {prim_ip, IP},
              {domain, read_conf(domain, InetRC)},
-             {search, Search}|Terms],
+             {search, Search}|RevisedConf],
             {ok, Conf};
         Error ->
             {stop, Error}

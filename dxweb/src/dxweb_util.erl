@@ -45,11 +45,12 @@ unmarshal(Data) ->
     jsx:json_to_term(Data).
 
 %%
-%% @doc Makes a unique session id (locks on erlang:now/0). The ID is not unqiue
-%% across emulator restarts.
+%% @doc Makes a (reasonably likely to be) unique session id. The ID is 
+%% not guaranteed to be unqiue across emulator restarts.
 %%
 make_uuid() ->
-    erlang:md5(term_to_binary({now(), erlang:make_ref()})).
+    UUID = erlang:md5(term_to_binary({self(), erlang:make_ref()})),
+    base64:encode_to_string(UUID).
 
 header(Header, Req) ->
     misultin_utility:header_get_value(Header, Req:get(headers)).
