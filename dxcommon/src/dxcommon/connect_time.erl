@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Utils
+%% Erlang System Monitoring Commons: Library API
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,22 +22,33 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: May 2010
-%%
-%% @doc General Purpose Utilities.
-%%
-%% -----------------------------------------------------------------------------
+-module(dxcommon.connect_time).
+-author('Tim Watson <watson.timothy@gmail.com>').
+-compile({parse_transform, exprecs}).
 
--module(dxkit_utils).
--compile(export_all).
+-include("dxcommon.hrl").
 
-rfc1123_datetime(Now={_,_,_}) ->
-    rfc1123_datetime(calendar:now_to_local_time(Now));
-rfc1123_datetime(DateTime={{_,_,_}, {_,_,_}}) ->
-    httpd_util:rfc1123_date(DateTime).
+-export([new/0, sync/1]).
+-export_records([connect_time]).
 
-iso_8601_time({{Year,Month,Day},{Hour,Min,Sec}}) ->
-    io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
-        [Year, Month, Day, Hour, Min, Sec]).
+-import(calendar).
+-import(erlang).
+
+new() ->
+    %% shortcut
+    Now = calendar:now_to_universal_time(erlang:now()),
+    GSecs = calendar:datetime_to_gregorian_seconds(Now),
+    #connect_time{snapshot=GSecs}.
+
+%% you are UP at snapshot, elapsed_X = 0
+%% you say you're now DOWN, so we 
+%%      re-snapshot and 
+%%      add up the time diff for elapsed_X
+
+sync(#connect_time{elapsed=Elapsed,
+                   snapshot=ThenGS}=CT) ->
+    Now = calendar:now_to_universal_time(erlang:now()),
+    NowGS = calendar:datetime_to_gregorian_seconds(Now),
+    CT#connect_time{elapsed=(Elapsed + (NowGS - ThenGS)),
+                    snapshot=NowGS}.
+    

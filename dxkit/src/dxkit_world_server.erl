@@ -140,27 +140,23 @@ handle_info({timeout, _TRef, start}, State) ->
         Err -> {stop, Err, State}
     end;
 handle_info({timeout, _TRef, refresh},     
-            #wstate{options=Opt, 
+            #wstate{options=Opt,
                     timeout=Timeout}=State) ->
     Worker = fun() ->
-        Nodes = case lists:keyfind(nodes, 1, Opt) of
-            {nodes, N} -> N;
-            _ -> []
-        end,
         %% FIXME: if find_nodes regularly takes longer than the timeout,
         %%  we need to `up' the timeout accordingly...
-        Scan = case lists:keyfind(startup, 1, Opt) of
+        case lists:keyfind(startup, 1, Opt) of
             %% TODO: rename this config element, as it 
             %% doesn't *only* run on startup
             {startup, {scan, all}} ->
                 dxkit_net:find_nodes();
             {startup, {scan, Hosts}} when is_list(Hosts) ->
                 lists:flatten([dxkit_net:find_nodes(Host) || Host <- Hosts]);
-            _ -> []
-        end,
-        NodeList = Nodes ++ Scan,
-        fastlog:debug("[World] Re-Connecting to nodes ~p~n", [NodeList]),
-        [ dxkit_net:connect(N) || N <- NodeList, N =/= node() ]
+            _ -> 
+                ok
+        end
+        %% update(Scan)
+        %% [ insert(dxkit_net:connect(N)) || N <- NodeList, N =/= node() ]
         %% gen_event:notify(dxkit_event_handler, {world, refresh})
     end,
     spawn_link(Worker),
@@ -185,27 +181,23 @@ code_change(_OldVsn, State, _Extra) ->
 start_monitor() ->
     net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]).
 
-%stop_monitor() ->
-%    net_kernel:monitor_nodes(false).
-
 set_timer(Timeout) ->
     fastlog:debug("[World] Starting refresh timer with a "
-                  "~p ms interval.~n",
-                  [Timeout]),
+                  "~p ms interval.~n", [Timeout]),
     erlang:start_timer(Timeout, ?MODULE, refresh).
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
-    fastlog:info("[World] Node ~p status change: ~p~n", [Node, NodeStatus]),
     NodeInfo = case ets:lookup(Tab, Node) of
         [NI] ->
-            dxkit_net:update_node(NI, {NodeStatus, InfoList});
+            dxkit_net:sync(NI#node_info.status, 
+                NI#node_info{status=NodeStatus, info=InfoList});
         _ ->
             dxkit_net:connect(Node)
     end,
+    fastlog:info("[World] Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
     ets:insert(Tab, NodeInfo),
-    spawn(fun() ->
-        gen_event:notify(dxkit_event_handler,
-            {world, {NodeStatus, NodeInfo}}) end),
+    %% TODO: just send the actual node!?
+    gen_event:notify(dxkit_event_handler, {world, {NodeStatus, NodeInfo}}),
     {noreply, State}.
 
 refresh_interval(Config) ->

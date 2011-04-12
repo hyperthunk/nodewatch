@@ -35,6 +35,44 @@
 
 -compile(export_all).
 
+rfc1123_datetime(Now={_,_,_}) ->
+    rfc1123_datetime(calendar:now_to_local_time(Now));
+rfc1123_datetime(DateTime={{_,_,_}, {_,_,_}}) ->
+    httpd_util:rfc1123_date(DateTime).
+
+iso_8601_time({{Year,Month,Day},{Hour,Min,Sec}}) ->
+    io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
+        [Year, Month, Day, Hour, Min, Sec]).
+
+jsonify({_K, []}=KV) ->
+    KV;
+jsonify([{K, V}]) when is_list(V) ->
+    {K, lists:map(fun jsonify/1, V)};
+jsonify([{_K, _V}|_]=List) ->
+    lists:map(fun jsonify/1, List);    
+jsonify({K, [H|_]=V}) when is_list(V) andalso is_integer(H) ->
+    {K, list_to_binary(V)};
+jsonify({K, {M, F, A}=V}) when is_atom(M), is_atom(F), is_integer(A) ->
+    {K, jsonify(V)};
+jsonify({K, V}) when is_tuple(V) ->
+    {K, lists:map(fun jsonify/1, tuple_to_list(V))};
+jsonify({K, V}) when is_atom(V) ->
+    {K, atom_to_binary(V, utf8)};
+jsonify({K, V}) when is_list(V) ->
+    case is_tuple(hd(V)) of
+        true ->
+            {K, lists:map(fun jsonify/1, V)};
+        false ->
+            {K, list_to_binary(V)}
+    end;
+jsonify({M, F, A}) ->
+    [{module, atom_to_binary(M, utf8)},
+     {function, atom_to_binary(F, utf8)},
+     {arity, A}];
+jsonify({_K, _V}=Pair) ->
+    Pair.
+
+
 record_to_proplist(R) ->
     case type(R) of
         {error, _Reason}=Err ->
@@ -52,12 +90,34 @@ enforce_fields({Name, Value}=Pair) when is_tuple(Value) ->
     MaybeRecName = element(1, Value),
     case type(MaybeRecName) of
         {error, _} ->
-            Pair;
+            %% even if this isn't a record, we want a nested proplist
+            case Value of
+                {_, _}=KVP ->
+                    {Name, [jsonify(KVP)]};
+                _ ->
+                    jsonify(Pair)
+            end;
         {Type, Mod} ->
-            {Name, record_to_proplist(Type, Mod, Value)}
+            case record_to_proplist(Type, Mod, Value) of
+                {_, PList} ->
+                    {Name, PList};
+                Other ->
+                    %% ????
+                    {Name, Other}
+            end
     end;
 enforce_fields({_Name, _Value}=Pair) ->
-    Pair.
+    jsonify(Pair).
+
+%% TODO: deprecate this....
+new_r(Type, Values) ->
+    case type(Type) of
+        {error, Reason} ->
+            throw(Reason);
+        {Type, Mod} ->
+            Properties = lists:zip(type_members(Type, Mod), Values),
+            apply(Mod, list_to_atom("#new-" ++ atom_to_list(Type)), [Properties])
+    end.
 
 new(Type, Properties) ->
     case type(Type) of
@@ -72,8 +132,24 @@ new(Type) ->
         {error, Reason} ->
             throw(Reason);
         {_, Mod} ->
-            apply(Mod, list_to_atom("#new-" ++ atom_to_list(Type)), [])
+            case erlang:function_exported(Mod, 'new', 0) of
+                true ->
+                    Mod:new();
+                false ->
+                    apply(Mod, list_to_atom("#new-" ++ atom_to_list(Type)), [])
+            end
     end.
+
+members(Type) ->
+    case type(Type) of
+        {error, Reason} ->
+            throw(Reason);
+        {Type, Mod} ->
+            type_members(Type, Mod)
+    end.
+
+type_members(Type, Mod) ->
+    Mod:'#info-'(Type, fields).
 
 type(node_info) ->
     node_info();
@@ -81,10 +157,13 @@ type(subscription) ->
     subscription();
 type(user) ->
     user();
+type(connect_time) ->
+    connect_time();
 type(Other) ->
-    case lists:filter(fun(Mod) -> Mod:'#is_record-'(Other) end, 
-                    [dxcommon.node_info, 
-                     dxcommon.subscription, 
+    case lists:filter(fun(Mod) -> Mod:'#is_record-'(Other) end,
+                    [dxcommon.connect_time,
+                     dxcommon.node_info,
+                     dxcommon.subscription,
                      dxcommon.user]) of
         [TypeMod] ->
             [_,B] = string:tokens(atom_to_list(TypeMod), "."),
@@ -92,6 +171,9 @@ type(Other) ->
         [] ->
             {error, {unknown_type, Other}}
     end.
+
+connect_time() ->
+    {connect_time, 'dxcommon.connect_time'}.
 
 node_info() ->
     {node_info, 'dxcommon.node_info'}.

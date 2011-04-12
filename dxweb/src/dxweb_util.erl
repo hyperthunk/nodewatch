@@ -37,15 +37,22 @@
 %%
 %% @doc Serializes the supplied term/data.
 %%
+marshal(Data) when is_record(Data, user) orelse
+                   is_record(Data, node_info) orelse
+                   is_record(Data, subscription) ->
+    jsx:term_to_json([dxcommon:record_to_proplist(Data)]);
 marshal(Data=[#node_info{}|_Rest]) ->
-    jsx:term_to_json(lists:map(fun dxcommon:record_to_proplist/1, Data));
+    jsx:term_to_json(
+        lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
 marshal(Data=[#subscription{}|_Rest]) ->
-    jsx:term_to_json(lists:map(fun dxcommon:record_to_proplist/1, Data));
+    jsx:term_to_json(
+        lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
 marshal(Data=[#user{}|_Rest]) ->
-    jsx:term_to_json(lists:map(fun dxcommon:record_to_proplist/1, Data));
+    jsx:term_to_json(
+        lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
 marshal([Data]) ->
     %% TODO: write an optimised encoding function for jsx, as it's quite slow.
-    jsx:term_to_json(jsonify(Data)).
+    jsx:term_to_json(dxcommon:jsonify(Data)).
 
 %%
 %% @doc Deserializes the supplied json data.
@@ -77,29 +84,3 @@ parse_cookie(Req) ->
 cookie_item_fold(CookieItem, Acc) ->
     [Key, Value] = re:split(CookieItem, "=", [{return, list}, {parts, 2}]),
     [{Key, Value} | Acc].
-
-%%
-%% Internal API
-%%
-
-jsonify([{K, V}]) when is_list(V) ->
-    {K, lists:map(fun jsonify/1, V)};
-jsonify({K, V}) when is_list(V) ->
-    {K, list_to_binary(V)};
-jsonify({K, {M, F, A}=V}) when is_atom(M), is_atom(F), is_integer(A) ->
-    {K, jsonify(V)};
-jsonify({K, V}) when is_tuple(V) ->
-    {K, lists:map(fun jsonify/1, tuple_to_list(V))};
-jsonify({K, V}) when is_atom(V) ->
-    {K, atom_to_binary(V, utf8)};
-jsonify({K, V}) when is_list(V) ->
-    case is_tuple(hd(V)) of
-        true ->
-            {K, lists:map(fun jsonify/1, V)};
-        false ->
-            {K, list_to_binary(V)}
-    end;
-jsonify({M, F, A}) ->
-    [{module, atom_to_binary(M, utf8)},
-     {function, atom_to_binary(F, utf8)},
-     {arity, A}].

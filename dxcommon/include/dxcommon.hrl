@@ -28,17 +28,23 @@
 -type(interval()        :: integer()).
 -type(unit_of_measure() :: seconds | minutes | hours | milliseconds).
 -type(nodeinfo()        :: [{atom(), term()}]).
--type(nodestatus()      :: unknown | {nodeup | nodedown, nodeinfo()}).
+-type(nodestatus()      :: unknown | nodeup | nodedown).
 -type(sample_rate()     :: integer() | {integer(), unit_of_measure()}).
 -type(mode()            :: instrument | {sample, sample_rate()}).
 -type(sensor()          :: atom()).
 -type(username()        :: string()).
 
+-record(connect_time, {
+    elapsed  = 0 :: integer(),
+    snapshot = 0 :: integer()
+}).
+
 -record(node_info, {
-    node_name                   :: node(),
-    nodestatus  = unknown       :: nodestatus(),
-    uptime      = {0,{0,0,0}}   :: conn_time(),
-    downtime    = {0,{0,0,0}}   :: conn_time()
+    node_name                       :: node(),
+    status      = unknown           :: nodestatus(),
+    info        = []                :: nodeinfo(),
+    uptime      = #connect_time{}   :: #connect_time{},
+    downtime    = #connect_time{}   :: #connect_time{}
 }).
 
 %% Represents a subscription for a specific user on a specific node

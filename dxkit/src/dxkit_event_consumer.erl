@@ -92,7 +92,7 @@ filter_events({prfPrc, Data}) ->
 filter_process_events({now, Now}, Acc) ->
     %% TODO: consider whether this term is generic enough to be
     %% handled elsewhere
-    TS = {now, dxkit_utils:iso_8601_time(Now)},
+    TS = {now, dxcommon:iso_8601_time(Now)},
     [TS|Acc];
 filter_process_events(Node={node, _}, Acc) ->
     [Node|Acc];

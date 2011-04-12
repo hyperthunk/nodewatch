@@ -13,7 +13,6 @@
          dxkit_subscription_sup,
          dxkit_sup,
          dxkit_sensor,
-         dxkit_utils,
          dxkit_world_server]},
     {registered,[]},
     {applications,[kernel,

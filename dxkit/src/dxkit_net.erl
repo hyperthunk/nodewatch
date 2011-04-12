@@ -51,17 +51,22 @@
 
 -export([start/0, start_link/0]).
 -export([get_blacklist/0, clear_blacklist/0,
-         connect/1, find_nodes/0, find_nodes/1,
+         connect/1, sync/2, find_nodes/0, find_nodes/1,
          force_connect/1, hostname/0, prim_ip/1]).
 
 %%
 %% Public API
 %%
 
+%% FIXME: figure out why the first run connect(node()) 
+%% (using erlang:now()) comes back with nonsense.
+
 start() ->
+    connect(node()),
     gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
 start_link() ->
+    connect(node()),
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%
@@ -109,16 +114,39 @@ clear_blacklist() ->
 -spec(connect/1 :: (Node::atom()) -> #node_info{};
                    (Node::#node_info{}) -> #node_info{}).
 connect(Node) when is_atom(Node) ->
-    fastlog:debug("Connecting to node ~p~n", [Node]),
-    Status = case net_kernel:connect_node(Node) of
+    connect(#node_info{node_name=Node,
+                       uptime='dxcommon.connect_time':new(),
+                       downtime='dxcommon.connect_time':new()});
+connect(#node_info{node_name=Name, status=PrevStatus}=Node) ->
+    Status = case net_kernel:connect_node(Name) of
         ignored -> unknown;
-        false   -> {nodedown, []};
-        true    -> {nodeup, []}
+        false   -> nodedown;
+        true    -> nodeup
     end,
-    'dxcommon.node_info':update_node(Node, Status);
-connect(#node_info{node_name=Name}=Node) ->
-    NI = connect(Name),
-    'dxcommon.node_info':update_node(Node, NI#node_info.nodestatus).
+    sync(PrevStatus, Node#node_info{status=Status, info=[]}).
+
+%% TODO: simplify this!
+
+sync(nodeup, #node_info{status=nodedown, uptime=Up, downtime=Down}=Node) ->
+    Node#node_info{uptime=sync(Up), downtime=Down};
+sync(nodedown, #node_info{status=nodeup, uptime=Up, downtime=Down}=Node) ->
+    Node#node_info{uptime=Up, downtime=sync(Down)};
+sync(Then, #node_info{status=Now, uptime=Up, 
+                      downtime=Down}=Node) when Then == Now ->
+    {Uptime, Downtime} = case Then of
+        nodeup ->
+            {sync(Up), Down};
+        nodedown ->
+            {Up, sync(Down)};
+        _ ->
+            {Up, Down}
+    end,
+    Node#node_info{uptime=Uptime, downtime=Downtime};
+sync(unknown, Node) ->
+    Node.
+
+sync(CT) ->
+    'dxcommon.connect_time':sync(CT).
 
 %%
 %% @doc Force check the connection to Node.
