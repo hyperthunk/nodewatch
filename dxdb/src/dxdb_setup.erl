@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Database: Top Level Supervisor
+%% Erlang System Monitoring Database: Mnesia Setup (i.e. install)
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -37,7 +37,7 @@ create_db() ->
 
 create_schema() ->
     %% ok = create_seq(),
-    Tabs = [{user, record_info(fields, user)}, 
+    Tabs = [{user, record_info(fields, user)},
             {subscription, record_info(fields, subscription)}],
     [create_table(T, Attrs) || {T, Attrs} <- Tabs],
     mnesia:wait_for_tables([user, subscription], infinity).

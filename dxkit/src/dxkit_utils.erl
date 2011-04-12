@@ -33,3 +33,11 @@
 -module(dxkit_utils).
 -compile(export_all).
 
+rfc1123_datetime(Now={_,_,_}) ->
+    rfc1123_datetime(calendar:now_to_local_time(Now));
+rfc1123_datetime(DateTime={{_,_,_}, {_,_,_}}) ->
+    httpd_util:rfc1123_date(DateTime).
+
+iso_8601_time({{Year,Month,Day},{Hour,Min,Sec}}) ->
+    io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B",
+        [Year, Month, Day, Hour, Min, Sec]).

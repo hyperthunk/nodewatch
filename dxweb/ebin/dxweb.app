@@ -6,7 +6,7 @@
             dxweb_http_handler,
             dxweb_http_server,
             dxweb_util,
-            dxweb_websocket_registry,
+            dxweb_event_sink,
             dxweb_invalid_websocket,
             dxweb_session]},
   {registered,[]},

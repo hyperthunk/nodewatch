@@ -10,7 +10,7 @@
          dxkit_event_log,
          dxkit_net,
          dxkit_net_sup,
-         dxkit_subscribers,
+         dxkit_subscription_sup,
          dxkit_sup,
          dxkit_sensor,
          dxkit_utils,

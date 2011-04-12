@@ -65,7 +65,7 @@ start_link() ->
 %% any websocket registered, against the supplied `SessionID'.
 %%
 send(SessionID, Data) ->
-    send_term(SessionID, jsx:term_to_json(Data)).
+    send_term(SessionID, dxweb_util:marshal(Data)).
 
 %%
 %% @doc Sends `Term' directly to any websocket registered

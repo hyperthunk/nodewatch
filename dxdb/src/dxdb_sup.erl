@@ -33,21 +33,21 @@
 -export([full_start/0, start_link/0]).
 -export([init/1]).
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
+%%
+%% Public API
+%%
 
 full_start() ->
-    %% TODO: do this in appstart
+    %% TODO: make it possible to do this (via config) using appstart
     application:start(mnesia, permanent),
     start_link().
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-%% ===================================================================
+%%
 %% Supervisor callbacks
-%% ===================================================================
+%%
 
 init([]) ->
     Children = [

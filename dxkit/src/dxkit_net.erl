@@ -110,13 +110,12 @@ clear_blacklist() ->
 -spec(connect/1 :: (Node::atom()) -> #node_info{};
                    (Node::#node_info{}) -> #node_info{}).
 connect(Node) when is_atom(Node) ->
-    fastlog:debug("Connecting to node '~p'~n", [Node]),
+    fastlog:debug("Connecting to node ~p~n", [Node]),
     Status = case net_kernel:connect_node(Node) of
         ignored -> unknown;
         false   -> {nodedown, []};
         true    -> {nodeup, []}
     end,
-    fastlog:debug("Node '~p' status: ~p~n", [Node, Status]),
     update_node(Node, Status);
 connect(#node_info{node_name=Name}=Node) ->
     NI = connect(Name),
@@ -207,15 +206,15 @@ init(_) ->
                     OrigHosts = read_conf(hosts, Terms),
                     RevisedHosts = 
                         [ (hostname(Host, S))#h_name.fullname || S <- Search ],
-                    Updated = lists:keyreplace(hosts, 1, Terms,
-                                    {hosts, lists:concat([OrigHosts, RevisedHosts])}),
+                    Updated = 
+                        lists:keyreplace(hosts, 1, Terms,
+                            {hosts, lists:concat([OrigHosts, RevisedHosts])}),
                     {PrimIP, Updated};
                 false ->
                     {prim_ip(Host), Terms}
             end,
-            ets:new(dx.net.workers,
-                    [named_table, protected,
-                    {read_concurrency, erlang:system_info(smp_support)}]),
+            ets:new(dx.net.workers, [named_table, protected, 
+                        {read_concurrency, erlang:system_info(smp_support)}]),
             %% FIXME: check for blacklist table before creating it....
             DB = case read_conf(blacklist, Terms, disabled) of
                 enabled ->

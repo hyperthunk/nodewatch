@@ -54,6 +54,9 @@ init(StartArgs) ->
         {dxweb_http_server,
             {dxweb_http_server, start_link,
                 [proplists:get_value(webconfig, StartArgs)]},
-            permanent, infinity, supervisor, [supervisor]}
+            permanent, infinity, supervisor, [supervisor]},
+        {dxweb_event_sink, 
+            {dxweb_event_sink, start_link, []},
+            permanent, 5000, worker, [gen_server]}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

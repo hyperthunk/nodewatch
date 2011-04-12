@@ -31,14 +31,53 @@
 %% -----------------------------------------------------------------------------
 
 -module(dxkit).
+-author('Tim Watson <watson.timothy@gmail.com>').
+
+-export([activate_subscriptions/2, disable_subscriptions/1]).
+-export([add_event_sink/1, add_event_sink/2, add_event_sink/3]).
+-export([which_nodes/0]).
 -export([start_dev/0]).
 
+%% 
+%% Public API
 %%
-%% @doc Starts the dxkit OTP application in dev mode.
+
+%%
+%% @doc Activates all subscriptions for the given user.
+%%
+activate_subscriptions(User, Key) ->
+    dxkit_subscription_sup:add_subscriber(User, Key).
+
+%%
+%% @doc Disables all subscriptions for the given user - the opposite
+%% of activate_subscriptions/2.
+%%
+disable_subscriptions(Key) ->
+    dxkit_subscription_sup:remove_subscriber(Key).
+
+%%
+%% @doc Returns all the nodes that are currently being monitored.
+%%
+which_nodes() ->
+    dxkit_world_server:nodes().
+
+add_event_sink(Dest) when is_pid(Dest) ->
+    tbc.
+
+add_event_sink(Mod, Func) ->
+    dxkit_event_bridge:add_subscriber(Mod, Func, [[]]).
+
+add_event_sink(Mod, Func, ArgSpec) ->
+    dxkit_event_bridge:add_subscriber(Mod, Func, ArgSpec).
+
+%%
+%% @doc Starts the dxkit OTP application in dev mode. This is only intended 
+%% for use whne you're running nodewatch from the start-dev shell script.
 %%
 start_dev() ->
     appstart:start_deps(dxkit),
     fastlog:set_level(debug),
     application:start(dxkit),
+    fastlog:debug("Loading in ~p~n", [file:get_cwd()]),
     {atomic, ok} = mnesia:load_textfile("../inttest/testdb.conf"),
     ok.

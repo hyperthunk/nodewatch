@@ -1,6 +1,6 @@
 %% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring: Event Consumer.
+%% Erlang System Monitoring: (Eper) Event Consumer.
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -24,7 +24,7 @@
 %% ------------------------------------------------------------------------------
 %%
 %% @doc When used in conjunction with eper, this module handles monitoring events.
-%% One module is created per active subscriber, with the subscriber's client key 
+%% One module is created per active subscriber, with the subscriber's client key
 %% providing a reply-to mechanism outside this application.
 %%
 %% This process runs on the `nodewatch' host, not the node(s) being monitored.
@@ -47,7 +47,7 @@
 
 -record(state, {node}).
 
-init(Node) -> 
+init(Node) ->
     #state{node=Node}.
 
 terminate(_) -> ok.
@@ -55,10 +55,9 @@ terminate(_) -> ok.
 name() -> SubscriberKey.
 target() -> Node.
 
-collectors() -> 
-    [subscription_to_collector_tag(S) || 
-        S <- Subscriptions,
-        S#subscription.mode == instrument].
+collectors() ->
+    [ X || X <- lists:map(fun collector_tag/1, Subscriptions),
+           X =/= invalid ].
 
 config(State, _) -> State.
 
@@ -66,16 +65,69 @@ tick(State, []) ->
     State;
 tick(State, [[]]) ->
     State;
-tick(#state{node=Node}=State, Data) ->
-    dxkit_pubsub:publish(SubscriberKey, Node, Data),
+tick(#state{node=Node}=State, {ID, Node, Data}) ->
+    handle_events(ID, Node, Data),
     State.
 
 %% Internal API
 
-subscription_to_collector_tag(
-    #subscription{sensor=system}) -> prfSys;
-subscription_to_collector_tag(
-    #subscription{sensor=network}) -> prfNet;
-subscription_to_collector_tag(
-    #subscription{sensor=process}) -> prfPrc.
+handle_events(ID, Node, Data) ->
+    lists:foreach(fun(Ev) -> handle_event(ID, Node, Ev) end, Data).
+
+handle_event(ID, Node, Event) ->
+    lists:foreach(fun(E) ->
+        dxkit_event_bridge:publish_event({ID, Node, E})
+    end, filter_events(Event)).
+
+%% filter_events(ID, Node, Ev)
+filter_events({prfNet, Data}) ->
+    lists:foldl(fun filter_network_events/2, [], Data);
+filter_events({prfPrc, Data}) ->
+    lists:foldl(fun filter_process_events/2, [], Data).
+
+%% most of the formatting concerns are elsewhere - here we just want
+%% to ensure a bit of sanity in the data structures we're firing off
+%% into the ether, filtering out well known badness and so on. 
+
+filter_process_events({now, Now}, Acc) ->
+    %% TODO: consider whether this term is generic enough to be
+    %% handled elsewhere
+    TS = {now, dxkit_utils:iso_8601_time(Now)},
+    [TS|Acc];
+filter_process_events(Node={node, _}, Acc) ->
+    [Node|Acc];
+filter_process_events(MsgQ={msgq, _}, Acc) ->
+    [MsgQ|Acc];
+filter_process_events({info, Data}, Acc) ->
+    MoreData = lists:foldl(fun filter_process_events/2, Acc, Data),
+    MoreData ++ Acc;  %% efficiency is fine (>= R14)
+filter_process_events({Pid, Data}, Acc) when is_pid(Pid)->
+    [PidString] = io_lib:format("~p", [Pid]),
+    PidEntry = {pid, list_to_binary(PidString)},
+    lists:foldl(fun filter_process_events/2, [PidEntry|Acc], Data);
+filter_process_events(Ev={_, _}, Acc) ->
+    filter_events(Ev, Acc).
+
+%% we're ignoring driver data for now...
+filter_network_events({{driver,_}, _}, Acc) ->
+    Acc;
+filter_network_events({{tcp, {Host, Port}}, Data}, Acc) ->
+    FilteredData = lists:fold(fun filter_network_events/2, [], Data),
+    Ev = {network, [
+            {type, <<"tcp">>},
+            {addr, Host},
+            {port, Port}|FilteredData]},
+    [Ev|Acc];
+filter_network_events({links, _}, Acc) -> Acc;
+filter_network_events({connected, _}, Acc) -> Acc;
+filter_network_events(Ev, Acc) -> filter_events(Ev, Acc).
+
+filter_events({_, EvData}, Acc) when is_pid(EvData) -> Acc;
+filter_events({_, EvData}, Acc) when is_port(EvData) -> Acc;
+filter_events({_EvTag, _EvData}=Ev, Acc) -> [Ev|Acc].
+
+collector_tag(system) -> prfSys;
+collector_tag(network) -> prfNet;
+collector_tag(process) -> prfPrc;
+collector_tag(_) -> invalid.
 

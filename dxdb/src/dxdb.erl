@@ -42,13 +42,14 @@
          find_user_subscriptions_for_node/2,
          find_all_subscriptions_for_node/1,
          find_sensors_for_node/2,
+         find_subscribed_nodes_by_user/1,
          find_instrumented_sensors_for_node/2]).
 
 -include_lib("stdlib/include/qlc.hrl").
 -include("../include/nodewatch.hrl").
 
 %%
-%% CrUD API Calls 
+%% CrUD API Calls
 %%
 
 %%
@@ -67,13 +68,13 @@ add_user(Name, Password) ->
     write(user(Name, Password)).
 
 %%
-%% @doc Subscribe a user to a specific set of events on a 
+%% @doc Subscribe a user to a specific set of events on a
 %% node, using the specified mode.
 %%
 add_subscription(#user{ name=Name }, Node, Sensor, Mode) ->
     add_subscription(Name, Node, Sensor, Mode);
 add_subscription(User, Node, Sensor, Mode) ->
-    %% Incr = mnesia:dirty_update_counter('dxdb.seq', 
+    %% Incr = mnesia:dirty_update_counter('dxdb.seq',
     %%                                    'subscription.nextkey', 1),
     write(#subscription{id = {User, Node, Sensor},
                         user = User,
@@ -82,7 +83,7 @@ add_subscription(User, Node, Sensor, Mode) ->
                         mode = Mode}).
 
 %%
-%% Finder API Calls 
+%% Finder API Calls
 %%
 
 %%
@@ -113,6 +114,16 @@ find_sensors_for_node(User, Node) ->
     Q = query_subscriptions(User, Node),
     transaction(fun() -> qlc:fold(fun collect_sensors/2, [], Q) end).
 
+find_subscribed_nodes_by_user(User) ->
+    Q = qlc:q([S || S <- mnesia:table(subscription),
+                    S#subscription.user == User]),
+    F = fun() ->
+        qlc:fold(fun(In, Acc) -> 
+                    sets:add_element(In#subscription.node, Acc) 
+                 end, sets:new(), Q)
+    end,
+    sets:to_list(transaction(F)).
+
 find_instrumented_sensors_for_node(User, Node) ->
     Q = qlc:q([S || S <- mnesia:table(subscription),
                     S#subscription.user == User,
@@ -128,8 +139,8 @@ check_user(#user{name=Name, password=Password}) ->
 
 check_user(Name, Password) ->
     <<Digest:160>> = crypto:sha(Password),
-    Q = qlc:q([X#user.name || X <- mnesia:table(user), 
-                              X#user.name == Name, 
+    Q = qlc:q([X#user.name || X <- mnesia:table(user),
+                              X#user.name == Name,
                               X#user.password == Digest]),
     {atomic, Val} = mnesia:transaction(fun() -> qlc:e(Q) end),
     length(Val) == 1.

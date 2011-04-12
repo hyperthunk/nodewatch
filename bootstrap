@@ -1,11 +1,13 @@
 #!/usr/bin/env sh
 
-DEPS_DIR=`cat rebar.config | grep deps_dir | awk ' /.*/ { gsub("\\\[\"", ""); gsub("\"\\]\\}.", ""); print $2; }'`
+DEPS_DIR=`cat rebar.config | \
+    grep deps_dir | \
+    awk ' /.*/ { gsub("\\\[\"", ""); gsub("\"\\]\\}.", ""); print $2; }'`
 ERL_LIBS="`pwd`:`pwd`/$DEPS_DIR"
 echo "ERL_LIBS = $ERL_LIBS"
 echo "fetching all dependencies"
 rebar -C depends.config get-deps
-echo "compiling sources"
+echo "compiling deps"
 rebar -C depends.config compile 
-echo "generating release"
+echo "compiling sources and generating a release"
 rebar compile generate skip_deps=true

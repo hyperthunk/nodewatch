@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Event (Disk) Log
+%% Erlang System Monitoring Dashboard: Event Sink
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -24,59 +24,80 @@
 %% -----------------------------------------------------------------------------
 %% @author Tim Watson [http://hyperthunk.wordpress.com]
 %% @copyright (c) Tim Watson, 2010
-%% @since: May 2010
+%% @since: March 2010
+%%
+%% @doc Attaches to the dxkit event bridge, proxying events to the right session
+%%
 %% -----------------------------------------------------------------------------
-
--module(dxkit_event_log).
+-module(dxweb_event_sink).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(gen_event).
+-behaviour(gen_server).
 
--export([init/1
-        ,handle_event/2
-        ,handle_call/2
-        ,handle_info/2
-        ,terminate/2
-        ,code_change/3]).
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
--export([enable/0, disable/0]).
-
-%% TODO: use disk_log for capture instead of fastlog 
-%% (or add disk_log support and the concept of multiple appenders to fastlog)
--record(state, {logfile, level}).
-
-enable() ->
-    gen_event:add_handler(dxkit_event_handler, ?MODULE, []).
-
-disable() ->
-    gen_event:remove_handler(dxkit_event_handler, ?MODULE, []).
-
-init([]) ->
-  {ok, #state{}}.
-
-handle_event(Message, State) ->
-    fastlog:debug("Event: ~p~n", [Message]),
-    {ok, State}.
+-export([start_link/0, stop/0]).
+-export([forward_event/1]).
 
 %%
-%% @private
-%% 
-handle_call(_, State) ->
-    {ok, ignored, State}.
+%% Public API
+%%
 
 %%
-%% @private
-%% 
+%% @doc Starts and registers the database subsystem
+%%
+start_link() ->
+    case gen_server:start_link({local, ?MODULE}, ?MODULE, [], []) of
+        {ok, _Pid}=Ok ->
+            dxkit:add_event_sink(?MODULE, forward_event),
+            Ok;
+        Other ->
+            Other
+    end.
+
+%%
+%% @doc Explicitly stops the server.
+%%
+stop() ->
+    gen_server:cast(?MODULE, stop).
+
+%% @hidden
+forward_event(Event) ->
+    gen_server:call(?MODULE, Event).
+
+%%
+%% gen_server callbacks
+%%
+
+%% @hidden
+init(_) ->
+    {ok, []}.
+
+%% @hidden
+handle_call({ID, _, Event}, _From, State) ->
+    dxweb_session:send(ID, Event),
+    {noreply, State};
+handle_call(_Msg, _From, State) ->
+    {noreply, State}.
+
+%% @hidden
+handle_cast(stop, State) ->
+    {stop, normal, State};
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%% @hidden
 handle_info(_Info, State) ->
-    {ok, State}.
+    {noreply, State}.
 
-%%
-%% @private
-%% 
+%% @hidden
 terminate(_Reason, _State) ->
-    ok.
+    terminated.
 
-%%
-%% @private
-%% 
+%% @hidden
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

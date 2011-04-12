@@ -52,8 +52,8 @@ init(StartArgs) ->
         {dxkit_event_handler, 
             {gen_event, start_link, [{local, dxkit_event_handler}]},
              permanent, 5000, worker, dynamic},
-        {dxkit_pubsub,
-            {dxkit_pubsub, start_link, []},
-             permanent, 5000, supervisor, dynamic}
+        {dxkit_subscription_sup,
+            {dxkit_subscription_sup, start_link, []},
+             permanent, infinity, supervisor, dynamic}
     ],
     {ok, {{one_for_one, 5, 5}, Children}}.

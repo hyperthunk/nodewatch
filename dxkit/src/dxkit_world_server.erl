@@ -94,6 +94,9 @@ start(Options) ->
 start_link(Options) ->
     gen_server2:start_link({local, ?MODULE}, ?MODULE, Options, []).
 
+%%
+%% @doc Returns all the nodes that are currently being monitored.
+%%
 nodes() ->
     gen_server:call(?MODULE, nodes).
 
@@ -112,51 +115,63 @@ init(Args) ->
                     options=Args,
                     nodes=ets:new(dx.world.nodes, [{keypos, 2}])},
     %% discovery takes place out of band as this can block for a while....
-    set_timer(Timeout),
-    case net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]) of
-        ok  -> {ok, State};
-        Err -> {stop, Err}
-    end.
+    erlang:start_timer(3000, ?MODULE, start),
+    {ok, State}.
 
 handle_call(nodes, {_From, _Tag}, #wstate{nodes=Tab}=State) ->
     {reply, ets:tab2list(Tab), State}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {noreply, State}. 
 
 handle_info({nodeup, Node}, State) ->
+    fastlog:debug("{nodeup, Node} ~n"),
     reset_state({nodeup, Node, []}, State);
 handle_info({nodeup, Node, InfoList}, State) ->
+    fastlog:debug("{nodeup, Node, InfoList} ~n"),
     reset_state({nodeup, Node, InfoList}, State);
 handle_info({nodedown, Node}, State) ->
     reset_state({nodedown, Node, []}, State);
 handle_info({nodedown, Node, InfoList}, State) ->
     reset_state({nodedown, Node, InfoList}, State);
-handle_info({timeout, _TRef, refresh},
-            #wstate{nodes=Tab, options=Opt, timeout=Timeout}=State) ->
-    Nodes = case lists:keyfind(nodes, 1, Opt) of
-        {nodes, N} -> N;
-        _ -> []
+handle_info({timeout, _TRef, start}, State) ->
+    handle_info({timeout, _TRef, refresh}, State),
+    case start_monitor() of
+        ok  ->
+            {noreply, State};
+        Err -> {stop, Err, State}
+    end;
+handle_info({timeout, _TRef, refresh},     
+            #wstate{options=Opt, 
+                    timeout=Timeout}=State) ->
+    Worker = fun() ->
+        Nodes = case lists:keyfind(nodes, 1, Opt) of
+            {nodes, N} -> N;
+            _ -> []
+        end,
+        %% FIXME: if find_nodes regularly takes longer than the timeout,
+        %%  we need to `up' the timeout accordingly...
+        Scan = case lists:keyfind(startup, 1, Opt) of
+            %% TODO: rename this config element, as it 
+            %% doesn't *only* run on startup
+            {startup, {scan, all}} ->
+                dxkit_net:find_nodes();
+            {startup, {scan, Hosts}} when is_list(Hosts) ->
+                lists:flatten([dxkit_net:find_nodes(Host) || Host <- Hosts]);
+            _ -> []
+        end,
+        NodeList = Nodes ++ Scan,
+        fastlog:debug("[World] Revising NodeSet = ~p~n", [NodeList]),
+        [ dxkit_net:connect(N) || N <- NodeList, N =/= node() ],
+        gen_event:notify(dxkit_event_handler, {world, refresh})
     end,
-    %% FIXME: if find_nodes regularly takes longer than the timeout,
-    %%  we need to `up' the timeout accordingly...
-    Scan = case lists:keyfind(startup, 1, Opt) of
-        {startup, {scan, all}} ->
-            dxkit_net:find_nodes();
-        {startup, {scan, Hosts}} when is_list(Hosts) ->
-            lists:flatten([dxkit_net:find_nodes(Host) || Host <- Hosts]);
-        _ -> []
-    end,
-    NodeList = lists:concat([Nodes, Scan]),
-    fastlog:debug("[World] Revising NodeSet = ~p~n", [NodeList]),
-    [ets:insert(Tab, dxkit_net:connect(N)) || N <- NodeList, 
-                                              N =/= node()],
-    spawn(fun() -> 
-        gen_event:notify(dxkit_event_handler, 
-            {world, refresh}) end),                                          
+    spawn_link(Worker),
     set_timer(Timeout),
     {noreply, State};
-handle_info(_, State) ->
+handle_info({'EXIT', _, normal}, State) ->
+    {noreply, State};
+handle_info(Other, State) ->
+    fastlog:debug("Other ~p~n", [Other]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -169,8 +184,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%      Private API
 %% -----------------------------------------------------------------------------
 
+start_monitor() ->
+    net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]).
+
+%stop_monitor() ->
+%    net_kernel:monitor_nodes(false).
+
 set_timer(Timeout) ->
-    fastlog:debug("[World] Starting refresh timer with a ~p ms interval.~n", [Timeout]),
+    fastlog:debug("[World] Starting refresh timer with a ~p ms interval.~n",
+                  [Timeout]),
     erlang:start_timer(Timeout, ?MODULE, refresh).
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
@@ -182,8 +204,8 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
             dxkit_net:connect(Node)
     end,
     ets:insert(Tab, NodeInfo),
-    spawn(fun() -> 
-        gen_event:notify(dxkit_event_handler, 
+    spawn(fun() ->
+        gen_event:notify(dxkit_event_handler,
             {world, {NodeStatus, NodeInfo}}) end),
     {noreply, State}.
 

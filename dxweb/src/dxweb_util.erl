@@ -30,16 +30,18 @@
          header/2, parse_cookie/1, cookie_item_fold/2]).
 
 -include("dxweb.hrl").
+%% FIXME: is there a way for us *not* to rely on misultin internals here?
 -include_lib("misultin/include/misultin.hrl").
 
 %%
 %% @doc Serializes the supplied term/data.
 %%
-marshal(Data) ->
-    jsx:term_to_json(Data).
+marshal([Data]) ->
+    %% TODO: write an optimised encoding function for jsx, as it's quite slow.
+    jsx:term_to_json(jsonify(Data)).
 
 %%
-%% @doc Deserializes the supplied data.
+%% @doc Deserializes the supplied json data.
 %%
 unmarshal(Data) ->
     jsx:json_to_term(Data).
@@ -55,6 +57,7 @@ make_uuid() ->
 header(Header, Req) ->
     misultin_utility:header_get_value(Header, Req:get(headers)).
 
+%% FIXME: Consider moving this into an external library?
 parse_cookie(Req) ->
     Raw = Req:raw(),
     case proplists:get_value('Cookie', Raw#req.headers) of
@@ -67,3 +70,29 @@ parse_cookie(Req) ->
 cookie_item_fold(CookieItem, Acc) ->
     [Key, Value] = re:split(CookieItem, "=", [{return, list}, {parts, 2}]),
     [{Key, Value} | Acc].
+
+%%
+%% Internal API
+%%
+
+jsonify([{K, V}]) when is_list(V) ->
+    {K, lists:map(fun jsonify/1, V)};
+jsonify({K, V}) when is_list(V) ->
+    {K, list_to_binary(V)};
+jsonify({K, {M, F, A}=V}) when is_atom(M), is_atom(F), is_integer(A) ->
+    {K, jsonify(V)};
+jsonify({K, V}) when is_tuple(V) ->
+    {K, lists:map(fun jsonify/1, tuple_to_list(V))};
+jsonify({K, V}) when is_atom(V) ->
+    {K, atom_to_binary(V, utf8)};
+jsonify({K, V}) when is_list(V) ->
+    case is_tuple(hd(V)) of
+        true ->
+            {K, lists:map(fun jsonify/1, V)};
+        false ->
+            {K, list_to_binary(V)}
+    end;
+jsonify({M, F, A}) ->
+    [{module, atom_to_binary(M, utf8)},
+     {function, atom_to_binary(F, utf8)},
+     {arity, A}].

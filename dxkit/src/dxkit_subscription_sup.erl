@@ -29,52 +29,56 @@
 %% @doc Manages dynamic subscription to instrumented sensors.
 %%
 %% -----------------------------------------------------------------------------
--module(dxkit_subscribers).
+-module(dxkit_subscription_sup).
 -behaviour(supervisor).
 
 %% API
 -export([start_link/0]).
--export([subscribe/2, unsubscribe/1]).
+-export([add_subscriber/2, remove_subscriber/1]).
 -export([init/1]).
 
 -include("../include/nodewatch.hrl").
 
-%% ===================================================================
+%%
 %% API functions
-%% ===================================================================
+%%
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-subscribe(User, SubscriberKey) ->
-    [ start_child(SubscriberKey, Node, Sensors) || 
-        {Node, Sensors} <- [ 
-            subscriptions(User, S#subscription.node) ||
-                S <- dxdb:find_user_subscriptions(User) ] ].
+add_subscriber(User, SubscriberKey) when is_list(SubscriberKey) ->
+    add_subscriber(User, list_to_atom(SubscriberKey));
+add_subscriber(User, SubscriberKey) when is_atom(SubscriberKey) ->
+    [ start_child(User, SubscriberKey, Node) || 
+        Node <- dxdb:find_subscribed_nodes_by_user(User) ].
 
-unsubscribe(SubscriberKey) ->
+remove_subscriber(SubscriberKey) when is_list(SubscriberKey) ->
+    remove_subscriber(list_to_atom(SubscriberKey));
+remove_subscriber(SubscriberKey) when is_atom(SubscriberKey) ->
+    %% NB: even with supervisor2, sending a kill signal to the sensor 
+    %% is the wrong thing to do - so we let the sensor kill itself and remove it.
     ok = dxkit_sensor:stop(SubscriberKey),
     supervisor:delete_child(?MODULE, SubscriberKey).
 
-%% ===================================================================
+%%
 %% Supervisor callbacks
-%% ===================================================================
+%%
 
 init(_) ->
-    %% TODO: review restart frequency settings
-    {ok, {{one_for_one, 0, 0}, []}}.
+    %% NB: a simple_one_for_one supervisor wouldn't let us terminate/remove
+    %% children so easily, which is why this is a one_for_one with an initially
+    %% empty child specification (which is handled dynamically)
+    {ok, {{one_for_one, 10, 10}, []}}.
 
-%% 
+%%
 %% Internal API
 %%
 
-subscriptions(User, Node) ->
-    Found = dxdb:find_instrumented_sensors_for_node(User, Node),
-    {Node, Found}.
-
-start_child(Subscriber, Node, Sensors) ->
+start_child(User, Subscriber, Node) ->
+    %% TODO: get dxdb to collate the node /w sensors in one shot
+    Sensors = dxdb:find_instrumented_sensors_for_node(User, Node),
     Consumer = dxkit_event_consumer:new(Subscriber, Node, Sensors),
-    ChildSpec = {Consumer:name(),  
+    ChildSpec = {Consumer:name(),
                 {dxkit_sensor, start, [Consumer]},
                  transient, 5000, worker, dynamic},
     supervisor:start_child(?MODULE, ChildSpec).
