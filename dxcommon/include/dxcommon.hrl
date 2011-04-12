@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: Type Definitions Header
+%% Erlang System Monitoring Tools: Common Type Definitions Header
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -58,3 +58,8 @@
 
 %% The named event handler registered by dxdb_sup on startup.
 -define(DB_EVENT, dxdb_event_handler).
+
+-define(TS(Start, End), {?DIFF_SEC(Start, End), End}).
+-define(TS_EMPTY, {0,0,0}).
+-define(DIFF_SEC(T1,T2), ((timer:now_diff(T2, T1) * 0.001) / 1000)).
+

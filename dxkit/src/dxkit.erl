@@ -76,7 +76,7 @@ add_event_sink(Mod, Func, ArgSpec) ->
 %%
 start_dev() ->
     appstart:start_deps(dxkit),
-    fastlog:set_level(debug),
+    fastlog:set_level(info),
     application:start(dxkit),
     fastlog:debug("Loading in ~p~n", [file:get_cwd()]),
     {atomic, ok} = mnesia:load_textfile("../inttest/testdb.conf"),

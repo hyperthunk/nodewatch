@@ -63,9 +63,8 @@ handle_http_request(Req, _, ["static"|ResourcePath]) ->
     Req:file(resolve_path(ResourcePath));
 handle_http_request(Req, invalid, _) ->
     Req:respond(401, [{"Location", "service/login"}], []);
-handle_http_request(Req, SID, ["service", Resource|Rest]) ->
-    Mod = "dxweb_" ++ Resource ++ "_controller",
-    apply(Mod, string:to_lower(atom_to_list(Req:get(method))), [Req,SID|Rest]).
+handle_http_request(Req, SID, ["service"|Resource]) ->
+    apply(dxweb_controller, http_method_to_function(Req), [Req,SID|Resource]).
 
 %%
 %% NB: This callback (loop) simply idles the websocket to keep it open,
@@ -84,6 +83,9 @@ handle_websocket(Ws) ->
             fastlog:debug("Websocket *other* => ~p~n", [Other]),
             handle_websocket(Ws)
     end.
+
+http_method_to_function(Req) ->
+    list_to_atom(string:to_lower(atom_to_list(Req:get(method)))).
 
 get_ws_client_id(Ws) ->
     Path = Ws:get(path),

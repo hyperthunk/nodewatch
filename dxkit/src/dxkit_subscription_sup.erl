@@ -37,7 +37,7 @@
 -export([add_subscriber/2, remove_subscriber/1]).
 -export([init/1]).
 
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 
 %%
 %% API functions

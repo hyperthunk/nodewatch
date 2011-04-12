@@ -78,6 +78,10 @@ init(_) ->
     {ok, []}.
 
 %% @hidden
+handle_call({world, {_NodeStatus, _NodeInfo}=Ev}, _From, State) ->
+    %% TODO: fix this so that somewhere (?) we serialised the record properly
+    dxweb_session:send_all([Ev]),
+    {noreply, State};
 handle_call({ID, _, Event}, _From, State) ->
     dxweb_session:send(ID, Event),
     {noreply, State};

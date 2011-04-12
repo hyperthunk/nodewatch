@@ -25,7 +25,7 @@
 
 -module(dxdb_setup).
 -author('Tim Watson <watson.timothy@gmail.com>').
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 -include("dxdb.hrl").
 
 %% API

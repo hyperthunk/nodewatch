@@ -30,12 +30,19 @@
          header/2, parse_cookie/1, cookie_item_fold/2]).
 
 -include("dxweb.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 %% FIXME: is there a way for us *not* to rely on misultin internals here?
 -include_lib("misultin/include/misultin.hrl").
 
 %%
 %% @doc Serializes the supplied term/data.
 %%
+marshal(Data=[#node_info{}|_Rest]) ->
+    jsx:term_to_json(lists:map(fun dxcommon:record_to_proplist/1, Data));
+marshal(Data=[#subscription{}|_Rest]) ->
+    jsx:term_to_json(lists:map(fun dxcommon:record_to_proplist/1, Data));
+marshal(Data=[#user{}|_Rest]) ->
+    jsx:term_to_json(lists:map(fun dxcommon:record_to_proplist/1, Data));
 marshal([Data]) ->
     %% TODO: write an optimised encoding function for jsx, as it's quite slow.
     jsx:term_to_json(jsonify(Data)).

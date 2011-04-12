@@ -41,7 +41,7 @@
          code_change/3]).
 
 -include_lib("kernel/include/inet.hrl").
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 -include("dxkit.hrl").
 
 -record(h_name, {host, domain, fullname}).
@@ -52,8 +52,7 @@
 -export([start/0, start_link/0]).
 -export([get_blacklist/0, clear_blacklist/0,
          connect/1, find_nodes/0, find_nodes/1,
-         force_connect/1, update_node/2,
-         hostname/0, prim_ip/1]).
+         force_connect/1, hostname/0, prim_ip/1]).
 
 %%
 %% Public API
@@ -116,10 +115,10 @@ connect(Node) when is_atom(Node) ->
         false   -> {nodedown, []};
         true    -> {nodeup, []}
     end,
-    update_node(Node, Status);
+    'dxcommon.node_info':update_node(Node, Status);
 connect(#node_info{node_name=Name}=Node) ->
     NI = connect(Name),
-    update_node(Node, NI#node_info.nodestatus).
+    'dxcommon.node_info':update_node(Node, NI#node_info.nodestatus).
 
 %%
 %% @doc Force check the connection to Node.
@@ -129,56 +128,6 @@ connect(#node_info{node_name=Name}=Node) ->
 force_connect(Node) when is_atom(Node) ->
     pong = net_adm:ping(Node),
     Node.
-
-%%
-%% @doc When called with Node::atom(), creates a #node_info record representing
-%% the state of the specified Node. Otherwise, updates the status of the
-%% supplied #node_info record with a up/down time adjusted automatically.
-%%
--spec(update_node/2 :: (Node::atom(),       Status::nodestatus()) -> #node_info{};
-                       (Node::#node_info{}, Status::nodestatus()) -> #node_info{}).
-update_node(Node, Status) when is_atom(Node) ->
-    Start = erlang:now(),
-    End = Start,
-    TS = ?TS(Start, End),
-    #node_info{
-        node_name=Node,
-        nodestatus=Status,
-        uptime=TS,
-        downtime=TS
-    };
-update_node(
-    #node_info{
-        nodestatus={nodedown, _},
-        uptime={ElapsedUpTime, _},
-        downtime={ElapsedDownTime, LastDown}}=Node,
-        {nodeup, _}=Status) ->
-    Now = erlang:now(),
-    Diff = ?DIFF_SEC(LastDown, Now),
-    DownTime = {ElapsedDownTime + Diff, LastDown},
-    UpTime = {ElapsedUpTime, Now},
-    Node#node_info{
-        nodestatus=Status,
-        uptime=UpTime,
-        downtime=DownTime
-    };
-update_node(
-    #node_info{
-        nodestatus={nodeup, _},
-        uptime={ElapsedUpTime, LastUp},
-        downtime={ElapsedDownTime, LastDown}}=Node,
-        {nodedown, _}=Status) when is_record(Node, node_info) ->
-    Now = erlang:now(),
-    Diff = ?DIFF_SEC(LastUp, Now),
-    DownTime = {ElapsedDownTime, LastDown},
-    UpTime = {ElapsedUpTime + Diff, Now},
-    Node#node_info{
-        nodestatus=Status,
-        uptime=UpTime,
-        downtime=DownTime
-    };
-update_node(Node, _Status)
-    when is_record(Node, node_info) -> Node.
 
 %%
 %% gen_server callbacks
@@ -246,18 +195,14 @@ handle_call(get_conf, _, State) ->
     {reply, {ok, State}, State};
 handle_call(find, From, State) ->
     WorkerPid = spawn_link(start_worker(From, State)),
-    fastlog:debug("find ~p INSERT -> dx.net.workers, {~p, ~p}~n", [self(), WorkerPid, From]),
     ets:insert(dx.net.workers, {WorkerPid, From}),
     {reply, ok, State};
 handle_call({find, Host}, From, State) ->
     WorkerPid = spawn_link(start_worker(From, {Host, State})),
-    fastlog:debug("find-host ~p INSERT -> dx.net.workers, {~p, ~p}~n", 
-                    [self(), WorkerPid, From]),
     ets:insert(dx.net.workers, {WorkerPid, From}),
     {reply, ok, State};
-handle_call(Msg, {_From, _Tag}, State) ->
-    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
-    {reply, State, State}.
+handle_call(_Msg, _, State) ->
+    {noreply, State}.
 
 handle_cast({blacklist, HN}, State) ->
     ets:insert(dx.net.blacklist, HN),
@@ -387,7 +332,8 @@ find_host_entries(Domain, {Host, Conf, Entries}) ->
     Name = hostname(Host, Domain),
     case is_blacklisted(Name, Conf) of
         true ->
-            fastlog:debug("Blacklisted host ~p ignored~n", [Name#h_name.fullname]),
+            fastlog:debug("Blacklisted host ~p ignored~n", 
+                          [Name#h_name.fullname]),
             {Host, Conf, Entries};
         false ->
             case sets:is_element(Name, Revised) of
@@ -396,23 +342,27 @@ find_host_entries(Domain, {Host, Conf, Entries}) ->
                 false ->
                     Timeout = timeout(stringify(Host), stringify(Domain), Conf),
                     %% TODO: IPv6
-                    case inet:gethostbyname(Name#h_name.fullname, inet, Timeout) of
+                    case inet:gethostbyname(Name#h_name.fullname, 
+                                            inet, Timeout) of
                         {ok, #hostent{h_name=H_Name}} ->
                             %% unreachable hosts are of no interest
-                            case gen_tcp:connect(H_Name, epmd_port(), [inet], Timeout) of
+                            case gen_tcp:connect(H_Name, epmd_port(), 
+                                                 [inet], Timeout) of
                                 {error, _} ->
                                     fastlog:debug("Unable to connect to host ~p "
                                                   "- skipping~n", [Host]),
                                     maybe_blacklist(Name, Conf),
                                     {Host, Conf, Revised};
                                 {ok, Sock} ->
-                                    fastlog:debug("Connected to epmd on ~p~n", [Host]),
+                                    fastlog:debug("Connected to epmd on ~p~n",
+                                                    [Host]),
                                     ok = gen_tcp:close(Sock),
-                                    %% there is a host `Name' on this domain, so...
+                                    %% there is a host `Name' on this domain
                                     {Host, Conf, sets:add_element(Name, Revised)}
                             end;
                         {error, _} ->
-                            fastlog:debug("No dns resolution for ~p~n", [Name#h_name.fullname]),
+                            fastlog:debug("No dns resolution for ~p~n", 
+                                          [Name#h_name.fullname]),
                             maybe_blacklist(Name, Conf),
                             {Host, Conf, Revised}
                     end

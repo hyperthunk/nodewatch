@@ -8,7 +8,8 @@
             dxweb_util,
             dxweb_event_sink,
             dxweb_invalid_websocket,
-            dxweb_session]},
+            dxweb_session,
+            dxweb_controller]},
   {registered,[]},
   {applications,[
     kernel,

@@ -37,7 +37,7 @@
 -export([start_link/0, add_subscriber/3, 
          poke_subscribers/0, publish_event/1]).
 
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 
 %%
 %% Public API

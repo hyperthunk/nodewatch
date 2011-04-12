@@ -48,7 +48,7 @@
 
 -behavior(gen_server2).
 
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 -include("dxkit.hrl").
 
 -record(wstate, {
@@ -125,10 +125,8 @@ handle_cast(_Msg, State) ->
     {noreply, State}. 
 
 handle_info({nodeup, Node}, State) ->
-    fastlog:debug("{nodeup, Node} ~n"),
     reset_state({nodeup, Node, []}, State);
 handle_info({nodeup, Node, InfoList}, State) ->
-    fastlog:debug("{nodeup, Node, InfoList} ~n"),
     reset_state({nodeup, Node, InfoList}, State);
 handle_info({nodedown, Node}, State) ->
     reset_state({nodedown, Node, []}, State);
@@ -161,9 +159,9 @@ handle_info({timeout, _TRef, refresh},
             _ -> []
         end,
         NodeList = Nodes ++ Scan,
-        fastlog:debug("[World] Revising NodeSet = ~p~n", [NodeList]),
-        [ dxkit_net:connect(N) || N <- NodeList, N =/= node() ],
-        gen_event:notify(dxkit_event_handler, {world, refresh})
+        fastlog:debug("[World] Re-Connecting to nodes ~p~n", [NodeList]),
+        [ dxkit_net:connect(N) || N <- NodeList, N =/= node() ]
+        %% gen_event:notify(dxkit_event_handler, {world, refresh})
     end,
     spawn_link(Worker),
     set_timer(Timeout),
@@ -191,12 +189,13 @@ start_monitor() ->
 %    net_kernel:monitor_nodes(false).
 
 set_timer(Timeout) ->
-    fastlog:debug("[World] Starting refresh timer with a ~p ms interval.~n",
+    fastlog:debug("[World] Starting refresh timer with a "
+                  "~p ms interval.~n",
                   [Timeout]),
     erlang:start_timer(Timeout, ?MODULE, refresh).
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
-    fastlog:debug("[World] Node ~p status change: ~p~n", [Node, NodeStatus]),
+    fastlog:info("[World] Node ~p status change: ~p~n", [Node, NodeStatus]),
     NodeInfo = case ets:lookup(Tab, Node) of
         [NI] ->
             dxkit_net:update_node(NI, {NodeStatus, InfoList});

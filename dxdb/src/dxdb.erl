@@ -46,7 +46,7 @@
          find_instrumented_sensors_for_node/2]).
 
 -include_lib("stdlib/include/qlc.hrl").
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 
 %%
 %% CrUD API Calls

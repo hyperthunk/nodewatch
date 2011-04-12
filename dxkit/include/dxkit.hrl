@@ -19,7 +19,3 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-
--define(TS(Start, End), {?DIFF_SEC(Start, End), End}).
--define(TS_EMPTY, {0,0,0}).
--define(DIFF_SEC(T1,T2), ((timer:now_diff(T2, T1) * 0.001) / 1000)).

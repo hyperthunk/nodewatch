@@ -1,6 +1,6 @@
-%% -----------------------------------------------------------------------------
+%% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Database: Top Level Supervisor
+%% Erlang System Monitoring Dashboard: Web Controller
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -21,41 +21,15 @@
 %% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
-%% -----------------------------------------------------------------------------
-
--module(dxdb_sup).
+%% ------------------------------------------------------------------------------
+-module(dxweb_controller).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(supervisor).
 
--include_lib("dxcommon/include/dxcommon.hrl").
+-export([post/3]).
 
-%% API
--export([full_start/0, start_link/0]).
--export([init/1]).
 
-%%
-%% Public API
-%%
+post(Req, _SID, ["nodes"]) ->
+    respond(Req, dxkit:which_nodes()).
 
-full_start() ->
-    %% TODO: make it possible to do this (via config) using appstart
-    application:start(mnesia, permanent),
-    start_link().
-
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-%%
-%% Supervisor callbacks
-%%
-
-init([]) ->
-    Children = [
-        {dxdb_event_handler, 
-            {gen_event, start_link, [{local, dxdb_event_handler}]},
-            permanent, 5000, worker, dynamic},
-        {dxdb_ev,
-            {dxdb_ev, start_link, []},
-            permanent, 5000, worker, [gen_server]}
-    ],
-    {ok, {{one_for_one, 10, 10}, Children}}.
+respond(Req, Data) ->
+    Req:ok([{"Content-Type", "application/json"}], dxweb_util:marshal([Data])).

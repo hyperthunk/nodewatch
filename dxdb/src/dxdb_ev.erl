@@ -35,7 +35,7 @@
 -author('Tim Watson <watson.timothy@gmail.com>').
 -behaviour(gen_server).
 
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 
 -export([init/1,
          handle_call/3,

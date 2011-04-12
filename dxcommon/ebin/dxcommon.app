@@ -1,0 +1,12 @@
+{application,
+ dxcommon,
+ [{description,"System Monitoring Commons Library"},
+  {vsn,"0.0.1"},
+  {modules,
+   ['dxcommon.node_info',
+    'dxcommon.subscription',
+    'dxcommon.user',
+    dxcommon]},
+  {registered,[]},
+  {applications,[kernel,stdlib]},
+  {env,[]}]}.

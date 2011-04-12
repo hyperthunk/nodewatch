@@ -10,7 +10,7 @@ BOOT="-boot $REL_DIR/setup/start"
 CONFIG="-config $REL_DIR/setup/sys.config"
 START_ARGS="$SYS $BOOT $CONFIG"
 HOST=`hostname`
-NAME='-name nw-dev@$HOST'
+NAME="-name nw-dev@$HOST"
 
 if [ ! -d "$DEV_DIR" ]; then
     echo "Setting up development environment for first time..."

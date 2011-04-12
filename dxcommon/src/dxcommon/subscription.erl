@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Database: Top Level Supervisor
+%% Erlang System Monitoring Commons: Library API
 %%
-%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,40 +22,10 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-
--module(dxdb_sup).
+-module(dxcommon.subscription).
 -author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(supervisor).
+-compile({parse_transform, exprecs}).
 
--include_lib("dxcommon/include/dxcommon.hrl").
+-include("dxcommon.hrl").
 
-%% API
--export([full_start/0, start_link/0]).
--export([init/1]).
-
-%%
-%% Public API
-%%
-
-full_start() ->
-    %% TODO: make it possible to do this (via config) using appstart
-    application:start(mnesia, permanent),
-    start_link().
-
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-%%
-%% Supervisor callbacks
-%%
-
-init([]) ->
-    Children = [
-        {dxdb_event_handler, 
-            {gen_event, start_link, [{local, dxdb_event_handler}]},
-            permanent, 5000, worker, dynamic},
-        {dxdb_ev,
-            {dxdb_ev, start_link, []},
-            permanent, 5000, worker, [gen_server]}
-    ],
-    {ok, {{one_for_one, 10, 10}, Children}}.
+-export_records([subscription]).

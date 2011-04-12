@@ -43,7 +43,7 @@
          collectors/0,
          config/2]).
 
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 
 -record(state, {node}).
 

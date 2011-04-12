@@ -43,10 +43,10 @@
 
 -export([start/0, start_link/0]).
 
--export([establish_session/1, send/2, send_term/2,
+-export([establish_session/1, send/2, send_term/2, send_all/1,
          set_websocket/2, remove_session/1, get_user_from_req/1]).
 
--include("../include/nodewatch.hrl").
+-include_lib("dxcommon/include/dxcommon.hrl").
 
 -record(session, {sid, user, websock}).
 
@@ -74,10 +74,16 @@ send(SessionID, Data) ->
 send_term(SessionID, Term) ->
     case lookup_websocket(SessionID) of
         {error, Reason} ->
-            exit({error, {SessionID, Reason}});
+            fastlog:error("[session-~s] ~s", [SessionID, Reason]);
         WebSock ->
             WebSock:send(Term)
     end.
+
+%%
+%% @doc Sends `Term' to all open websockets - runs out of band.
+%%
+send_all(Term) ->
+    gen_server:call(?MODULE, {send_all, Term}).
 
 set_websocket(SessionID, WebSock) ->
     gen_server:call(?MODULE, {set_websocket, SessionID, WebSock}).
@@ -150,6 +156,11 @@ handle_call({websocket, SessionID}, _, State) ->
         _Other ->
             {reply, {error, "Invalid User Session"}, State}
     end;
+handle_call({send_all, Term}, _, State) ->
+    Data = dxweb_util:marshal(Term),
+    lists:foreach(fun(S) -> (S#session.websock):send(Data) end,
+                  ets:tab2list('dxweb.sessions')),
+    {noreply, State};
 handle_call(Msg, {_From, _Tag}, State) ->
     fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
     {reply, State, State}.
