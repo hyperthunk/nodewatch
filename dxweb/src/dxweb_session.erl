@@ -141,7 +141,7 @@ handle_call({establish, #session{user=User}=Session}, _, State) ->
             {reply, {ignored, SID}, State}
     end;
 handle_call({remove, SessionID}, _, State) ->
-    ets:delete('dxweb.sessions', {'_', SessionID, '_', '_'}),
+    ets:delete('dxweb.sessions', SessionID),
     {reply, ok, State};
 handle_call({get_session_id, User}, _, State) ->
     {reply, find_user_session(User), State};
