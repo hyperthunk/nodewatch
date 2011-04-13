@@ -25,10 +25,9 @@
 -module(dxweb_controller).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([post/3]).
+-export([get/3]).
 
-
-post(Req, _SID, ["nodes"]) ->
+get(Req, _SID, "nodes") ->
     respond(Req, dxkit:which_nodes()).
 
 respond(Req, Data) ->

@@ -48,7 +48,7 @@ start_link(StartArgs) ->
 %% ===================================================================
 
 init(WorldArgs) ->
-    io:format("dxkit_net_sup: WorldArgs Args = ~p~n", [WorldArgs]),
+    fastlog:debug("dxkit_net_sup: WorldArgs Args = ~p~n", [WorldArgs]),
     Children = [
         {dxkit_net,
             {dxkit_net, start_link, []},

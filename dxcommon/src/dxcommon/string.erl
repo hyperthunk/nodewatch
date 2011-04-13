@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Commons: Library API
+%% Erlang System Monitoring Commons
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,28 +22,29 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
--module(dxcommon.connect_time).
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: March 2010
+%%
+%% @doc
+%%
+%% -----------------------------------------------------------------------------
+-module(dxcommon.string).
 -author('Tim Watson <watson.timothy@gmail.com>').
--compile({parse_transform, exprecs}).
-
 -include("dxcommon.hrl").
 
--export([new/0, sync/1]).
--export_records([connect_time]).
+-compile(export_all).
 
--import(calendar).
--import(erlang).
+-import(lists).
+-import(string).
 
-new() ->
-    %% shortcut
-    Now = calendar:now_to_universal_time(erlang:now()),
-    GSecs = calendar:datetime_to_gregorian_seconds(Now),
-    #connect_time{snapshot=GSecs}.
-
-sync(#connect_time{elapsed=Elapsed,
-                   snapshot=ThenGS}=CT) ->
-    Now = calendar:now_to_universal_time(erlang:now()),
-    NowGS = calendar:datetime_to_gregorian_seconds(Now),
-    CT#connect_time{elapsed=(Elapsed + (NowGS - ThenGS)),
-                    snapshot=NowGS}.
-    
+rejoin(Parts, With) ->
+    lists:foldl(
+        fun(E, Acc) ->
+            case Acc of
+                [] ->
+                    E;
+                _ ->
+                    string:join([E, Acc], With)
+            end
+        end, "", lists:reverse(Parts)).

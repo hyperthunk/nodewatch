@@ -44,7 +44,7 @@ start_link(StartArgs) ->
 
 init(StartArgs) ->
     WorldArgs = proplists:get_value(world, StartArgs, []),
-    io:format("dxkit_sup: WorldArgs = ~p~n", [WorldArgs]),
+    fastlog:debug("dxkit_sup: WorldArgs = ~p~n", [WorldArgs]),
     Children = [
         {dxkit_net_sup,
             {dxkit_net_sup, start_link, [WorldArgs]},

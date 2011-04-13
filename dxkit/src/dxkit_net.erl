@@ -50,7 +50,7 @@
 -define(DEFAULT_TIMEOUT, 5000).
 
 -export([start/0, start_link/0]).
--export([get_blacklist/0, clear_blacklist/0,
+-export([get_blacklist/0, clear_blacklist/0, ip_string/1,
          connect/1, sync/2, find_nodes/0, find_nodes/1,
          force_connect/1, hostname/0, prim_ip/1]).
 
@@ -101,6 +101,10 @@ prim_ip(Host) ->
         {ok, IP} -> IP;
         Err -> Err
     end.
+
+ip_string(Addr) when is_tuple(Addr) ->
+    %% again, only useful for IPv4
+    dxcommon.string:rejoin(tuple_to_list(Addr), ".").
 
 get_blacklist() ->
     gen_server:call(?MODULE, get_blacklist).
@@ -339,7 +343,7 @@ find_entries(Host, Conf) ->
                                         read_conf(domains, Conf));
         [HostPart|Rest] ->
             %% fully qualified host entries get checked only once
-            DomainPart = rejoin(Rest, "."),
+            DomainPart = dxcommon.string:rejoin(Rest, "."),
             find_host_entries(DomainPart, {HostPart, Conf, sets:new()})
     end,
     sets:to_list(Found).
@@ -436,17 +440,6 @@ stringify(Term) when is_binary(Term) ->
     binary_to_list(Term);
 stringify(Term) when is_list(Term) ->
     Term.
-
-rejoin(Parts, With) ->
-    lists:foldl(
-        fun(E, Acc) ->
-            case Acc of
-                [] ->
-                    E;
-                _ ->
-                    string:join([E, Acc], With)
-            end
-        end, "", lists:reverse(Parts)).
 
 epmd_port() ->
     %% this seems a bit limiting, as passing -port <num> is all you need

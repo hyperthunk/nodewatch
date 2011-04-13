@@ -44,7 +44,8 @@
 -export([start/0, start_link/0]).
 
 -export([establish_session/1, send/2, send_term/2, send_all/1,
-         set_websocket/2, remove_session/1, get_user_from_req/1]).
+         set_websocket/2, remove_session/1,
+         all_sessions/0, get_user_from_req/1]).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
 
@@ -104,13 +105,16 @@ establish_session(Req) ->
             {error, <<"login failed">>}
     end.
 
+all_sessions() ->
+    gen_server:call(?MODULE, list).
+
 remove_session(SessionID) ->
     gen_server:call(?MODULE, {remove, SessionID}).
 
 get_user_from_req(Req) ->
     PostData = Req:parse_post(),
-    Name = proplists:get_value(username, PostData),
-    Password = proplists:get_value(password, PostData),
+    Name = proplists:get_value("username", PostData),
+    Password = proplists:get_value("password", PostData),
     #user{name=Name, password=Password}.
 
 %%
@@ -122,7 +126,7 @@ init(_) ->
     process_flag(trap_exit, true),
     %% The sessions table stores a mapping from session id to user
     ets:new('dxweb.sessions',
-            [named_table, private,
+            [named_table, private, {keypos, 2}, %% sid == key
             {read_concurrency, erlang:system_info(smp_support)}]),
     {ok, []}.
 
@@ -137,11 +141,14 @@ handle_call({establish, #session{user=User}=Session}, _, State) ->
             {reply, {ignored, SID}, State}
     end;
 handle_call({remove, SessionID}, _, State) ->
-    ets:delete('dxweb.sessions', SessionID),
+    ets:delete('dxweb.sessions', {'_', SessionID, '_', '_'}),
     {reply, ok, State};
 handle_call({get_session_id, User}, _, State) ->
     {reply, find_user_session(User), State};
+handle_call(list, _, State) ->
+    {reply, ets:tab2list('dxweb.sessions'), State};
 handle_call({set_websocket, SessionID, WebSock}, _, State) ->
+    %% would be better to combine both these operations and use a match spec?
     case ets:lookup('dxweb.sessions', SessionID) of
         [Session] ->
             ets:insert('dxweb.sessions', Session#session{websock=WebSock}),
@@ -194,5 +201,5 @@ find_user_session(User) ->
 lookup_websocket(SessionID) ->
     gen_server:call(?MODULE, {websocket, SessionID}).
 
-authenticate_user({UserName, Password}) ->
+authenticate_user(#user{name=UserName, password=Password}) ->
     dxdb:check_user(UserName, Password).

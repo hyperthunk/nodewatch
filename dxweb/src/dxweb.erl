@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Commons: Library API
+%% Erlang System Monitoring Dashboard
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,28 +22,20 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
--module(dxcommon.connect_time).
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: May 2010
+%% -----------------------------------------------------------------------------
+
+-module(dxweb).
 -author('Tim Watson <watson.timothy@gmail.com>').
--compile({parse_transform, exprecs}).
+-export([start_dev/0]).
 
--include("dxcommon.hrl").
-
--export([new/0, sync/1]).
--export_records([connect_time]).
-
--import(calendar).
--import(erlang).
-
-new() ->
-    %% shortcut
-    Now = calendar:now_to_universal_time(erlang:now()),
-    GSecs = calendar:datetime_to_gregorian_seconds(Now),
-    #connect_time{snapshot=GSecs}.
-
-sync(#connect_time{elapsed=Elapsed,
-                   snapshot=ThenGS}=CT) ->
-    Now = calendar:now_to_universal_time(erlang:now()),
-    NowGS = calendar:datetime_to_gregorian_seconds(Now),
-    CT#connect_time{elapsed=(Elapsed + (NowGS - ThenGS)),
-                    snapshot=NowGS}.
-    
+%%
+%% @doc Starts the dxkit OTP application in dev mode. This is only intended 
+%% for use whne you're running nodewatch from the start-dev shell script.
+%%
+start_dev() ->
+    dxkit:start_dev(),
+    appstart:start(dxweb),
+    ok.

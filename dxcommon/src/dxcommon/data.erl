@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Commons: Library API
+%% Erlang System Monitoring Commons
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,28 +22,46 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
--module(dxcommon.connect_time).
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: March 2010
+%%
+%% @doc
+%%
+%% -----------------------------------------------------------------------------
+-module(dxcommon.data).
 -author('Tim Watson <watson.timothy@gmail.com>').
--compile({parse_transform, exprecs}).
-
 -include("dxcommon.hrl").
 
--export([new/0, sync/1]).
--export_records([connect_time]).
+-compile(export_all).
 
--import(calendar).
--import(erlang).
-
-new() ->
-    %% shortcut
-    Now = calendar:now_to_universal_time(erlang:now()),
-    GSecs = calendar:datetime_to_gregorian_seconds(Now),
-    #connect_time{snapshot=GSecs}.
-
-sync(#connect_time{elapsed=Elapsed,
-                   snapshot=ThenGS}=CT) ->
-    Now = calendar:now_to_universal_time(erlang:now()),
-    NowGS = calendar:datetime_to_gregorian_seconds(Now),
-    CT#connect_time{elapsed=(Elapsed + (NowGS - ThenGS)),
-                    snapshot=NowGS}.
-    
+jsonify([]=L) ->
+    L;
+jsonify({_K, []}=KV) ->
+    KV;
+jsonify([{K, V}]) when is_list(V) ->
+    {K, lists:map(fun jsonify/1, V)};
+jsonify([{_K, _V}|_]=List) ->
+    lists:map(fun jsonify/1, List);    
+jsonify({K, [H|_]=V}) when is_list(V) andalso is_integer(H) ->
+    {K, list_to_binary(V)};
+jsonify({K, {M, F, A}=V}) when is_atom(M) andalso is_atom(F) andalso 
+                               is_integer(A) ->
+    {K, jsonify(V)};
+jsonify({K, V}) when is_tuple(V) ->
+    {K, lists:map(fun jsonify/1, tuple_to_list(V))};
+jsonify({K, V}) when is_atom(V) ->
+    {K, atom_to_binary(V, utf8)};
+jsonify({K, V}) when is_list(V) ->
+    case is_tuple(hd(V)) of
+        true ->
+            {K, lists:map(fun jsonify/1, V)};
+        false ->
+            {K, list_to_binary(V)}
+    end;
+jsonify({M, F, A}) ->
+    [{module, atom_to_binary(M, utf8)},
+     {function, atom_to_binary(F, utf8)},
+     {arity, A}];
+jsonify({_K, _V}=Pair) ->
+    Pair.

@@ -35,13 +35,15 @@
 %% ===================================================================
 
 start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [StartArgs]).
+    io:format("~p StartArgs: ~p~n", [?MODULE, StartArgs]),    
+    supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init(StartArgs) ->
+    io:format("~p init StartArgs: ~p~n", [?MODULE, StartArgs]),
     Children = [
         {dxweb_http_handler,
             {dxweb_http_handler, start_link, [StartArgs]},

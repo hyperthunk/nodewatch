@@ -52,7 +52,9 @@ marshal(Data=[#user{}|_Rest]) ->
         lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
 marshal([Data]) ->
     %% TODO: write an optimised encoding function for jsx, as it's quite slow.
-    jsx:term_to_json(dxcommon:jsonify(Data)).
+    marshal(Data);
+marshal(Data) ->
+    jsx:term_to_json(dxcommon.data:jsonify(Data)).
 
 %%
 %% @doc Deserializes the supplied json data.

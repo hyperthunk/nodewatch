@@ -7,7 +7,7 @@ REL_DIR="$RUNNER_SCRIPT_DIR/release"
 DEV_DIR="$RUNNER_SCRIPT_DIR/dev"
 SYS="-sys $REL_DIR/setup/start"
 BOOT="-boot $REL_DIR/setup/start"
-CONFIG="-config $REL_DIR/setup/sys.config"
+CONFIG="-config $REL_DIR/files/app.config"
 START_ARGS="$SYS $BOOT $CONFIG"
 HOST=`hostname`
 NAME="-name nw-dev@$HOST"
@@ -38,7 +38,7 @@ do
             START_ARGS="$START_ARGS -eval 'dxkit:start_dev()'"
             ;;
         --web)
-            START_ARGS="$START_ARGS"
+            START_ARGS="$START_ARGS -eval 'dxweb:start_dev()'"
             ;;
         --attach)
             ATTACHED=""

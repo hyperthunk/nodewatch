@@ -38,27 +38,35 @@ start_link(Options) ->
     InternalOpts = [{loop, fun http_handler_loop/1},
                     {ws_loop, fun websocket_handler_loop/1},
                     {ws_autoexit, false}],
+    io:format("~p Options: ~p~n", [?MODULE, Options]),    
     StartOpts = lists:foldl(F, Options, InternalOpts),
+    io:format("StartOpts: ~p~n", [StartOpts]),
     misultin:start_link(StartOpts).
 
 http_handler_loop(Req) ->
     PathComponents = Req:resource([lowercase, urldecode]),
     SID = check_session(Req),
-    handle_http_request(Req, PathComponents, SID).
+    fastlog:info("Request[~p]-SID[~p]~n", [PathComponents, SID]),
+    handle_http_request(Req, SID, PathComponents).
 
 websocket_handler_loop(Ws) ->
     SID = get_ws_client_id(Ws),
     ok = dxweb_session:set_websocket(SID, Ws),
     handle_websocket(Ws).
 
-handle_http_request(Req, _, ["service", "login"]) ->
+handle_http_request(Req, ExistingSID, ["service", "login"]) ->
     case dxweb_session:establish_session(Req) of
         {error, Reason} ->
-            Req:respond(401, [dxweb_util:marshal(Req, Reason)]);
-        SID ->
-            Req:ok([{"Content-Type", "text/plain"},
-                    {"Set-Cookie", "sid=" ++ SID}], "login successful.")
+            Req:respond(401, [Reason]);
+        {ignored, ExistingSID} ->
+            Req:ok([{"Content-Type", "text/plain"}], "Already logged in!");
+        {ignored, OtherSID} ->
+            send_sid(Req, OtherSID);
+        NewSID ->
+            send_sid(Req, NewSID)
     end;
+handle_http_request(Req, _, ["dashboard.html"]=Path) ->
+    Req:file(resolve_path(Path));
 handle_http_request(Req, _, ["static"|ResourcePath]) ->
     Req:file(resolve_path(ResourcePath));
 handle_http_request(Req, invalid, _) ->
@@ -84,18 +92,22 @@ handle_websocket(Ws) ->
             handle_websocket(Ws)
     end.
 
+send_sid(Req, SID) ->
+    Req:ok([{"Content-Type", "text/plain"},
+            {"Set-Cookie", "sid=" ++ SID ++ "; path=/"}], 
+            "login successful.").
+
 http_method_to_function(Req) ->
     list_to_atom(string:to_lower(atom_to_list(Req:get(method)))).
 
 get_ws_client_id(Ws) ->
-    Path = Ws:get(path),
-    fastlog:debug("Websocket (path) = ~p~n", [Path]),
-    ["service", ClientID|_] = string:tokens(Path, "/"),
+    [$/|ClientID] = Ws:get(path),
+    fastlog:debug("Websocket connection for client ~p~n", [ClientID]),
     ClientID.
 
 check_session(Req) ->
     Cookie = dxweb_util:parse_cookie(Req),
-    proplists:get_value(sid, Cookie, invalid).
+    proplists:get_value("sid", Cookie, invalid).
 
 resolve_path(ResourcePath) ->
     BaseDir = filename:join(code:priv_dir(dxweb), "www"),

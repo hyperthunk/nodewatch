@@ -49,11 +49,13 @@ start_link(StartArgs) ->
 %% Supervisor callbacks
 %% ===================================================================
 
-init(StartArgs) ->
+init([StartArgs]) ->
+    io:format("~p StartArgs: ~p~n", [?MODULE, StartArgs]),
+    WebConfig = proplists:get_value(webconfig, StartArgs),
+    io:format("~p WebConfig: ~p~n", [?MODULE, WebConfig]),
     Children = [
         {dxweb_http_server,
-            {dxweb_http_server, start_link,
-                [proplists:get_value(webconfig, StartArgs)]},
+            {dxweb_http_server, start_link, [WebConfig]},
             permanent, infinity, supervisor, [supervisor]},
         {dxweb_event_sink, 
             {dxweb_event_sink, start_link, []},
