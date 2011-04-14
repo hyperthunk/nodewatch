@@ -1,0 +1,30 @@
+<div style="width:600px">
+    <div id="login-info" class="ui-state-highlight ui-corner-all info">
+        <span class="ui-icon ui-icon-info"></span>
+        <p>Please log in to begin</p>
+    </div>
+    <form>
+        <fieldset class="ui-corner-all ui-widget ui-widget-content">
+            <legend>Log In</legend>
+            <div>
+                <label for="username">Name <em>*</em></label>
+                <input type='text'
+                       name='username'
+                       id="username"
+                       class="required">
+            </div>
+            <div>
+                <label for="password">Password <em>*</em></label>
+                <input type='password'
+                       name='password'
+                       id="password"
+                       class="required">
+            </div>
+        </fieldset>
+        <div id="loginFailure" class="ui-helper-hidden-accessible">
+            <p style="font-weight:bold;color:red;">Login Failed - Please try again.</p>
+        </div>
+        <input type="button" class="loginButton" 
+                id="loginButton" value="Log In" />
+    </form>
+</div>

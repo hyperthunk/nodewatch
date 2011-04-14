@@ -55,15 +55,18 @@ websocket_handler_loop(Ws) ->
     handle_websocket(Ws).
 
 handle_http_request(Req, ExistingSID, ["service", "login"]) ->
-    case dxweb_session:establish_session(Req) of
-        {error, Reason} ->
-            Req:respond(401, [Reason]);
-        {ignored, ExistingSID} ->
+    case dxweb_session:is_valid(ExistingSID) of
+        true ->
             Req:ok([{"Content-Type", "text/plain"}], "Already logged in!");
-        {ignored, OtherSID} ->
-            send_sid(Req, OtherSID);
-        NewSID ->
-            send_sid(Req, NewSID)
+        false ->
+            case dxweb_session:establish_session(Req) of
+                {error, Reason} ->
+                    Req:respond(401, [Reason]);
+                {ignored, OtherSID} ->
+                    send_sid(Req, OtherSID);
+                NewSID ->
+                    send_sid(Req, NewSID)
+            end
     end;
 handle_http_request(Req, _, ["dashboard.html"]=Path) ->
     Req:file(resolve_path(Path));
@@ -72,7 +75,9 @@ handle_http_request(Req, _, ["static"|ResourcePath]) ->
 handle_http_request(Req, invalid, _) ->
     Req:respond(401, [{"Location", "service/login"}], []);
 handle_http_request(Req, SID, ["service"|Resource]) ->
-    apply(dxweb_controller, http_method_to_function(Req), [Req,SID|Resource]).
+    apply(dxweb_controller, 
+            http_method_to_function(Req), 
+            [Req,SID|Resource]).
 
 %%
 %% NB: This callback (loop) simply idles the websocket to keep it open,
@@ -85,8 +90,8 @@ handle_websocket(Ws) ->
         closed ->
             %% NB: the disconnection of a websocket resets/clears the session
             SessionID = get_ws_client_id(Ws),
-            fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]),
-            ok = dxweb_session:remove_session(SessionID);
+            fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]);
+            %% ok = dxweb_session:mark_session_for_removal(SessionID);
         Other ->
             fastlog:debug("Websocket *other* => ~p~n", [Other]),
             handle_websocket(Ws)
@@ -107,7 +112,16 @@ get_ws_client_id(Ws) ->
 
 check_session(Req) ->
     Cookie = dxweb_util:parse_cookie(Req),
-    proplists:get_value("sid", Cookie, invalid).
+    SID = proplists:get_value("sid", Cookie, "ignored"),
+    fastlog:info("Checking Request Cookie (sid): ~p~n", [SID]),
+    case dxweb_session:is_valid(SID) of
+        true ->
+            fastlog:debug("SID is valid"),
+            SID;
+        false ->
+            fastlog:debug("SID is invalid"),
+            invalid
+    end.
 
 resolve_path(ResourcePath) ->
     BaseDir = filename:join(code:priv_dir(dxweb), "www"),

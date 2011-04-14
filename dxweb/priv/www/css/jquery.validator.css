@@ -1,0 +1,20 @@
+textarea.error {
+    border: 1px dotted red;
+}
+
+input.error {
+    border: 1px dotted red;
+}
+
+label.error {
+	margin-left: 10px;
+	width: auto;
+	display: inline;
+    color: red;
+    font-style: italic;    
+}
+
+span.error {
+    color: red;
+    font-style: italic;    
+}

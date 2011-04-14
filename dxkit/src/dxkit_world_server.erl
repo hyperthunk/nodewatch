@@ -44,7 +44,7 @@
 
 -export([start/0, start/1, start_link/1]).
 
--export([nodes/0]).
+-export([nodes/0, node/1]).
 
 -behavior(gen_server2).
 
@@ -94,6 +94,9 @@ start(Options) ->
 start_link(Options) ->
     gen_server2:start_link({local, ?MODULE}, ?MODULE, Options, []).
 
+node(NodeId) ->
+    gen_server:call(?MODULE, {node, NodeId}).
+
 %%
 %% @doc Returns all the nodes that are currently being monitored.
 %%
@@ -118,6 +121,8 @@ init(Args) ->
     erlang:start_timer(3000, ?MODULE, start),
     {ok, State}.
 
+handle_call({node, NodeId}, _, #wstate{nodes=Tab}=State) ->
+    {reply, ets:lookup(Tab, NodeId), State};
 handle_call(nodes, {_From, _Tag}, #wstate{nodes=Tab}=State) ->
     {reply, ets:tab2list(Tab), State}.
 

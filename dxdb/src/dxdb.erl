@@ -137,6 +137,8 @@ find_instrumented_sensors_for_node(User, Node) ->
 check_user(#user{name=Name, password=Password}) ->
     check_user(Name, Password).
 
+check_user(Name, Password) when Name == undefined orelse 
+                                Password == undefined -> false;
 check_user(Name, Password) ->
     <<Digest:160>> = crypto:sha(Password),
     Q = qlc:q([X#user.name || X <- mnesia:table(user),

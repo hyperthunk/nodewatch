@@ -118,10 +118,10 @@ clear_blacklist() ->
 -spec(connect/1 :: (Node::atom()) -> #node_info{};
                    (Node::#node_info{}) -> #node_info{}).
 connect(Node) when is_atom(Node) ->
-    connect(#node_info{node_name=Node,
+    connect(#node_info{id=Node,
                        uptime='dxcommon.connect_time':new(),
                        downtime='dxcommon.connect_time':new()});
-connect(#node_info{node_name=Name, status=PrevStatus}=Node) ->
+connect(#node_info{id=Name, status=PrevStatus}=Node) ->
     Status = case net_kernel:connect_node(Name) of
         ignored -> unknown;
         false   -> nodedown;

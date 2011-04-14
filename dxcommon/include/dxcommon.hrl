@@ -40,7 +40,7 @@
 }).
 
 -record(node_info, {
-    node_name                       :: node(),
+    id                              :: node(),
     status      = unknown           :: nodestatus(),
     info        = []                :: nodeinfo(),
     uptime      = #connect_time{}   :: #connect_time{},

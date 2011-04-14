@@ -35,7 +35,7 @@
 
 -export([activate_subscriptions/2, disable_subscriptions/1]).
 -export([add_event_sink/1, add_event_sink/2, add_event_sink/3]).
--export([which_nodes/0]).
+-export([which_nodes/0, find_node/1]).
 -export([start_dev/0]).
 
 %% 
@@ -54,6 +54,9 @@ activate_subscriptions(User, Key) ->
 %%
 disable_subscriptions(Key) ->
     dxkit_subscription_sup:remove_subscriber(Key).
+
+find_node(NodeId) ->
+    dxkit_world_server:node(NodeId).
 
 %%
 %% @doc Returns all the nodes that are currently being monitored.

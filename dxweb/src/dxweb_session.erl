@@ -44,7 +44,7 @@
 -export([start/0, start_link/0]).
 
 -export([establish_session/1, send/2, send_term/2, send_all/1,
-         set_websocket/2, remove_session/1,
+         set_websocket/2, remove_session/1, is_valid/1,
          all_sessions/0, get_user_from_req/1]).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
@@ -105,6 +105,9 @@ establish_session(Req) ->
             {error, <<"login failed">>}
     end.
 
+is_valid(SessionID) ->
+    gen_server:call(?MODULE, {check_valid, SessionID}).
+
 all_sessions() ->
     gen_server:call(?MODULE, list).
 
@@ -140,6 +143,8 @@ handle_call({establish, #session{user=User}=Session}, _, State) ->
             %% so a user can only be logged in to one session at once
             {reply, {ignored, SID}, State}
     end;
+handle_call({check_valid, SessionID}, _, State) ->
+    {reply, ets:member('dxweb.sessions', SessionID), State};
 handle_call({remove, SessionID}, _, State) ->
     ets:delete('dxweb.sessions', SessionID),
     {reply, ok, State};

@@ -25,10 +25,22 @@
 -module(dxweb_controller).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([get/3]).
+-export([get/3, get/4]).
 
 get(Req, _SID, "nodes") ->
     respond(Req, dxkit:which_nodes()).
 
+get(Req, _SID, "nodes", NodeId) ->
+    respond_with_data(Req, dxkit:find_node(NodeId)).
+
+respond_with_data(Req, []) ->
+    not_found(Req);
+respond_with_data(Req, Data) ->
+    respond(Req, Data).
+
 respond(Req, Data) ->
-    Req:ok([{"Content-Type", "application/json"}], dxweb_util:marshal([Data])).
+    Req:ok([{"Content-Type", "application/json"}], 
+            dxweb_util:marshal([Data])).
+
+not_found(Req) ->
+    Req:respond(404).

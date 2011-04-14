@@ -9,7 +9,6 @@ Emakefile
 coverage
 coverage/*
 erl_crash.dump
-priv/
 test/logs/
 ebin/*.beam
 logs/*
@@ -22,3 +21,4 @@ dev
 release/setup/
 log
 .hosts.erlang.net.conf
+dxweb/priv/www/development-bundle

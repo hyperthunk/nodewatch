@@ -1,0 +1,235 @@
+body {
+    font: 62.5% "Trebuchet MS", sans-serif;
+    margin: 10px;
+}
+
+table tr {
+    text-align:left;
+}
+
+table th {
+    width:50px;
+    max-width:80px;
+    background-color:#AACCFF;
+}
+
+td.label {
+    font-weight: bold;
+}
+
+#actionButtons {
+    border-width:1px;
+    border-style:solid;
+    /*border-color:#4297D7;*/
+    border-color:#A6C9E2;
+    margin-top:5px;
+    margin-bottom:5px;
+    -moz-border-radius-bottomleft:5px;
+    -moz-border-radius-bottomright:5px;
+    -moz-border-radius-topleft:5px;
+    -moz-border-radius-topright:5px;
+}
+
+#header {
+    width:100%;
+    height:100%;
+    text-align:center;
+    vertical-align:top;
+    margin:0;
+    padding:0;
+}
+
+#header img {
+    margin:0;
+    padding:0;
+    width:30%;
+}
+
+/*#assocDiv td  {*/
+    /*border: 1px solid #D0E5F5;*/
+/*}*/
+
+/*#addNewAssetDiv input {*/
+    /*width:150px;*/
+/*}*/
+
+/*#addNewAssetDiv select {*/
+    /*width:160px;*/
+/*}*/
+
+#assetDetail input, #addNewAssetDiv input {
+    width:300px;
+}
+
+#assetDetail textarea, #addNewAssetDiv textarea {
+    width:450px;
+}
+
+#assetDetail select, #addNewAssetDiv select {
+    width:310px;
+}
+
+#assetDetail .validate-url {
+    width:450px;
+}
+
+#txtChangeDisplayName {
+    width:300px;
+}
+
+.button-text {
+    font-size:7px;
+    padding:2px;
+}
+
+textarea.error {
+    border: 1px dotted red;
+}
+
+input.error {
+    border: 1px dotted red;
+}
+
+label.error {
+	margin-left: 10px;
+	width: auto;
+	display: inline;
+    color: red;
+    font-style: italic;    
+}
+
+span.error {
+    color: red;
+    font-style: italic;    
+}
+
+#wizardHeadTxt {
+    color:green;
+    font-style: italic;
+}
+
+input.hint {
+   color:gray;
+}
+
+.assoc-td {
+    word-wrap:break-word;
+    max-width:80px;
+    width:80px;
+}
+
+#assocDivLeft {
+    width:45%;
+    height:360px;
+    overflow-y:scroll;
+    padding: 1em;
+    float: left;
+}
+
+#assocDivMiddle {
+    width: 20px;
+    float: left;
+}
+
+#assocDivRight {
+    width:45%;
+    height:360px;
+    float: right;
+    padding: 1em;
+}
+
+#assocDiv div.filterable-content {
+    overflow-y:scroll;
+    height:360px;
+}
+
+#searchResults div.filterable-content, #providedAssocTabs div, #consumedAssocTabs div {
+    overflow-y:scroll;
+    height:360px;
+}
+
+.demoHeaders {
+    margin-top: 1em;
+}
+
+#dialog_link {
+    padding: .4em 1em .4em 20px;
+    text-decoration: none;
+    position: relative;
+}
+
+#dialog_link span.ui-icon {
+    margin: 0 5px 0 0;
+    position: absolute;
+    left: .2em;
+    top: 50%;
+    margin-top: -8px;
+}
+
+li#searchButton {
+    margin: 2px;
+    position: relative;
+    padding: 4px 0;
+    cursor: pointer;
+    float: left;
+    list-style: none;
+}
+
+li#searchButton span.ui-icon {
+    float: left;
+    margin: 0 4px;
+}
+
+.dropdown {
+    width: 150px;
+}
+
+.dropdown-large {
+    width: 300px;
+}
+
+.row_highlighted {
+    background-color: #D0E5F5;
+}
+ .selectedRow {
+	background-color: #b0c4c4;
+}
+.highlight { 
+    background-color: #f7ca60;
+}
+/* Vertical Tabs
+----------------------------------*/
+.ui-tabs-vertical {
+    width: 55em;
+}
+
+.ui-tabs-vertical .ui-tabs-nav {
+    padding: .2em .1em .2em .2em;
+    float: left;
+    width: 12em;
+}
+
+.ui-tabs-vertical .ui-tabs-nav li {
+    clear: left;
+    width: 100%;
+    border-bottom-width: 1px !important;
+    border-right-width: 0 !important;
+    margin: 0 -1px .2em 0;
+}
+
+.ui-tabs-vertical .ui-tabs-nav li a {
+    display: block;
+}
+
+.ui-tabs-vertical .ui-tabs-nav li.ui-tabs-selected {
+    padding-bottom: 0;
+    padding-right: .1em;
+    border-right-width: 1px;
+    border-right-width: 1px;
+}
+
+.ui-tabs-vertical .ui-tabs-panel {
+    padding: 1em;
+    float: right;
+    width: 40em;
+}
