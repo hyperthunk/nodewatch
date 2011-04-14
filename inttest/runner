@@ -1,0 +1,109 @@
+#!/usr/bin/env escript
+
+-record(state, {
+    min, max, total, 
+    nodes, host, iterations}).
+
+-define(FILE_PATH, "inttest/testrun.conf").
+
+main([]) ->
+    io:fwrite("Cluster Test Runner.~nReads commands from testrun.conf.~n"),
+    io:fwrite("Usage: ./runner [Command]~n"),
+    io:fwrite("     --startup = Start all nodes~n"),
+    io:fwrite("     --shutdown = Stop all nodes~n"),
+    io:fwrite("     --simulate = Run simulation~n");
+main(["--config"]) ->
+    io:format("~s~n", [os:cmd("cat " ++ ?FILE_PATH)]),
+    ok;
+main(["--startup"]) ->
+    {ok, Opts} = file:consult(?FILE_PATH),
+    Nodes = list_nodes(Opts),
+    Startups = [start_node(N) || N <- Nodes],
+    case lists:all(fun(X) -> X == ok end, Startups) of
+        true ->
+            ok;
+        false ->
+            throw("Some commands failed!")
+    end;
+main(["--shutdown"]) ->
+    {ok, Opts} = file:consult(?FILE_PATH),
+    Nodes = list_nodes(Opts),
+    [stop_node(N) || N <- Nodes],
+    ok;
+main(["--simulate"]) ->
+    ok = appstart:start(crypto),
+    {ok, Opts} = file:consult(?FILE_PATH),
+    Host = kvc:path(host, Opts),
+    Nodes = [{(atom_to_list(N) ++ "@" ++ Host), W} || 
+        {N, W} <- kvc:path(nodes, Opts) ],
+    io:format("Starting Test Run on ~p with ~p~n", [Host, Nodes]),
+    Total = lists:foldl(fun({_,X}, Acc) -> X + Acc end, 0, Nodes),
+    loop(#state{
+        iterations=(length(Nodes) * 100),
+        host=Host, nodes=Nodes, total=Total, 
+        min=kvc:path(timer.min, Opts), 
+        max=kvc:path(timer.max, Opts)}).
+
+loop(#state{iterations=0}) -> ok;
+loop(State=#state{iterations=Iter}) ->
+    Random = crypto:rand_uniform(0, State#state.total),
+    VictimDetails = lists:foldl(fun(E,Acc) -> 
+                                    choose_victim(E, Acc)
+                                end, 
+                                {undefined, Random}, State),
+    take_node_offline(VictimDetails, Random, State),
+    loop(State#state{iterations=(Iter + 1)}).
+
+take_node_offline({Node, Weight}, Random, State) ->
+    NodeName = atom_to_list(Node) ++ "@" ++ State#state.host,
+    NodeTool = nodetest(NodeName),
+    case (Random rem 2) > 0 of
+        true ->
+            %% restart
+            io:format("Restarting node ~p~n", [{NodeName, Weight}]),
+            os:cmd(NodeTool ++ " restart");
+        false ->
+            %% stop + start
+            stop_node(NodeName),
+            Timeout = crypto:rand_uniform(State#state.min, State#state.max),
+            io:format("Restarting node ~p after ~psec timeout~n", 
+                      [NodeName, Timeout]),
+            erlang:start_timer(Timeout * 1000, self(), {restart, NodeName}),
+            await_restart(NodeName)
+    end.
+
+start_node(NodeName) ->
+    io:format("Starting node ~p~n", [NodeName]),
+    os:cmd(nodetest(NodeName) ++ " start"),
+    case os:cmd(nodetest(NodeName) ++ " ping") of
+        [$p,$o,$n,$g|_] -> ok;
+        Other -> {error, Other}
+    end.
+
+stop_node(NodeName) ->
+    io:format("Stopping node ~p~n", [NodeName]),
+    NodeTool = nodetest(NodeName),
+    os:cmd(NodeTool ++ " stop"),
+    ok.
+
+nodetest(NodeName) ->
+    "python inttest/nodetest.py " ++ NodeName.
+
+await_restart(NodeName) ->
+    receive
+        {restart, NodeName} ->
+            ok = start_node(NodeName),
+            io:format("Node ~p has been restarted!~n", [NodeName]);
+        Other ->
+            error(Other)
+    end.
+
+list_nodes(Opts) ->
+    Host = kvc:path(host, Opts),
+    [atom_to_list(N) ++ "@" ++ Host || 
+                {N, _} <- kvc:path(nodes, Opts) ].
+
+choose_victim({Node, Weight}, {_, Rand}) when Rand < Weight ->
+    {Node, (Rand - Weight)};
+choose_victim({_, Weight}, {Chosen, Rand}) ->
+    {Chosen, (Rand - Weight)}.

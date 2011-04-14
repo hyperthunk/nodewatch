@@ -142,7 +142,7 @@ check_user(Name, Password) ->
     Q = qlc:q([X#user.name || X <- mnesia:table(user),
                               X#user.name == Name,
                               X#user.password == Digest]),
-    {atomic, Val} = mnesia:transaction(fun() -> qlc:e(Q) end),
+    {atomic, Val} = mnesia:sync_transaction(fun() -> qlc:e(Q) end),
     length(Val) == 1.
 
 %%
@@ -161,7 +161,7 @@ write(Item) ->
     transaction(fun() -> mnesia:write(Item), Item end).
 
 transaction(Fun) ->
-    case mnesia:transaction(Fun) of
+    case mnesia:sync_transaction(Fun) of
         {atomic, Value} ->
             Value;
         {aborted, Reason} ->

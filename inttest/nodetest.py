@@ -23,4 +23,5 @@ def nodetool(name, cmd):
 
 if __name__ == '__main__':
     import sys
+    # print("%s" % sys.argv[1:])
     nodetool(*(sys.argv[1:]))
