@@ -40,4 +40,4 @@ get(_) ->
     exit(no_websocket).
 
 send(_) ->
-    exit(no_websocket).
+    ignored.

@@ -45,7 +45,7 @@
 
 -export([establish_session/1, send/2, send_term/2, send_all/1,
          set_websocket/2, remove_session/1, is_valid/1,
-         all_sessions/0, get_user_from_req/1]).
+         all_sessions/0, get_user_from_req/1, suspend_session_websocket/1]).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
 
@@ -110,6 +110,9 @@ is_valid(SessionID) ->
 
 all_sessions() ->
     gen_server:call(?MODULE, list).
+
+suspend_session_websocket(SessionID) ->
+    set_websocket(SessionID, dxweb_invalid_websocket).
 
 remove_session(SessionID) ->
     gen_server:call(?MODULE, {remove, SessionID}).

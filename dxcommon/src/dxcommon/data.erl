@@ -35,6 +35,8 @@
 
 -compile(export_all).
 
+-import(lists).
+
 jsonify([]=L) ->
     L;
 jsonify({_K, []}=KV) ->
@@ -64,4 +66,8 @@ jsonify({M, F, A}) ->
      {function, atom_to_binary(F, utf8)},
      {arity, A}];
 jsonify({_K, _V}=Pair) ->
-    Pair.
+    Pair;
+jsonify([H|_]=V) when is_list(V) andalso is_integer(H) ->
+    list_to_binary(V);
+jsonify(V) when is_atom(V) ->
+    atom_to_binary(V, utf8).

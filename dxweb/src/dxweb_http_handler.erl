@@ -55,6 +55,7 @@ websocket_handler_loop(Ws) ->
     handle_websocket(Ws).
 
 handle_http_request(Req, ExistingSID, ["service", "login"]) ->
+    %% TODO: stop this double checking of the session id
     case dxweb_session:is_valid(ExistingSID) of
         true ->
             Req:ok([{"Content-Type", "text/plain"}], "Already logged in!");
@@ -90,15 +91,15 @@ handle_websocket(Ws) ->
         closed ->
             %% NB: the disconnection of a websocket resets/clears the session
             SessionID = get_ws_client_id(Ws),
-            fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]);
-            %% ok = dxweb_session:mark_session_for_removal(SessionID);
+            fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]),
+            ok = dxweb_session:suspend_session_websocket(SessionID);
         Other ->
             fastlog:debug("Websocket *other* => ~p~n", [Other]),
             handle_websocket(Ws)
     end.
 
 send_sid(Req, SID) ->
-    Req:ok([{"Content-Type", "text/plain"},
+    Req:ok([{"Content-Type", "application/json"},
             {"Set-Cookie", "sid=" ++ SID ++ "; path=/"}], 
             "login successful.").
 

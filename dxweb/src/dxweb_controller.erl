@@ -31,7 +31,9 @@ get(Req, _SID, "nodes") ->
     respond(Req, dxkit:which_nodes()).
 
 get(Req, _SID, "nodes", NodeId) ->
-    respond_with_data(Req, dxkit:find_node(NodeId)).
+    respond_with_data(Req, dxkit:find_node(NodeId));
+get(Req, _SID, "subscriptions", User) ->
+    respond_with_data(Req, dxdb:find_user_subscriptions(User)).
 
 respond_with_data(Req, []) ->
     not_found(Req);

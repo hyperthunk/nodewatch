@@ -22,7 +22,7 @@
 // THE SOFTWARE.
 //
 $(document).ready(function() {
-    
+
     _.templateSettings = {
       interpolate : /\$\{(.+?)\}/g,
       evaluate:     /#\{(.+?)\}/g
@@ -60,6 +60,7 @@ $(document).ready(function() {
     window.NoOp = function() {};
 
     window.Service = {
+        debuggerTag: 'Service',
         loadFragment: function(path, dest) {
             return this.get({url: path,
                              accept: 'application/html',
@@ -76,7 +77,7 @@ $(document).ready(function() {
                 return this.http(opts);
             }
         },
-        
+
         postForm: function(url, data) {
             return $.ajax({
                 async: false,
@@ -99,24 +100,68 @@ $(document).ready(function() {
         }
     };
 
+    window.Subscription = Backbone.Model.extend({
+        debuggerTag: 'Subscription',
+        defaults: {
+            id: 'user.node.sensor',
+            user: 'user',
+            node: 'nonode@nohost',
+            sensor: 'none',
+            mode: 'instrument'
+        },
+        parse: function(response) {
+            var data = response.subscription;
+            data.id = _.template('${user}-${node}-${sensor}', data);
+            return data;
+        }
+    });
+
+    window.SubscriptionList = Backbone.Collection.extend({
+        debuggerTag: 'SubscriptionList',
+        model: Node,
+        initialize: function(spec) {
+            // _.bindAll('sync');
+            this.url = spec.url;
+        },
+        /*sync: function(method, model, success, error) {
+            if (model === this) {
+                model = _.defaults({url: })
+            }
+        }*/
+        parse: function(response) {
+            return _.map(response,
+                function(s) { return s.subscription; });
+        }
+    });
+
     //$('#loading').dialog({ autoOpen: false });
     window.Node = Backbone.Model.extend({
+        debuggerTag: 'Node',
         // id is the -name of the node, e.g. Node[foo@bar] => id = foo
         defaults: {
             id: 'nonode@nohost',
             status: 'unknown',
             info: []
+        },
+        parse: function(response) {
+            return response.node_info;
         }
     });
 
     window.NodeSet = Backbone.Collection.extend({
+        debuggerTag: 'NodeSet',
         url: '/service/nodes',
-        model: Node
+        model: Node,
+        parse: function(response) {
+            return _.map(response,
+                function(ni) { return ni.node_info; });
+        }
     });
 
     // TODO: use backbone's Model#refresh to do all this.....
 
     window.Session = Backbone.Model.extend({
+        debuggerTag: 'Session',
         defaults: {
             version: '0.0.1',
             host: document.location.host,
@@ -139,8 +184,18 @@ $(document).ready(function() {
                 return false;
             } else {
                 this.set({sessionId: $.cookie("sid")});
-                console.debug(_.template('connecting to ${ws}', 
+                console.debug(_.template('connecting to ${ws}',
                                 {ws: this.websocketUrl()}));
+                //$.cookie("nodewatch.user", this.get('username'));
+                var username = this.get('username');
+                if (username != undefined) {
+                    $.cookie('nodewatch.user', username, {
+                        expires: 7,
+                        path: '/',
+                        domain: document.domain,
+                        secure: false
+                    });
+                }
                 this.websocketConnect();
                 return true;
             }
@@ -166,6 +221,7 @@ $(document).ready(function() {
     });
 
     window.LoginView = Backbone.View.extend({
+        debuggerTag: 'LoginView',
         model: Session,
         events: {
             "click input.loginButton" : "login"
@@ -182,9 +238,9 @@ $(document).ready(function() {
             this.el.show();
             return this;
         },
-        hide: function() { 
-            this.el.hide(); 
-            return this; 
+        hide: function() {
+            this.el.hide();
+            return this;
         },
         login: function() {
             if (this.$('form').validate()) {
@@ -219,15 +275,22 @@ $(document).ready(function() {
         },
         render: function() {
             this._rendered = true;
-            $(this.el)
+            /*$(this.el)
                 .empty()
                 .directives(this.directives)
-                .render(this.collection.toJSON());
+                .render(this.collection.toJSON());*/
+            Notify.show('Skipping rendering for now.....');
         }
     });
-    
+
+    // TODO: seperate into Application[Model] and ApplicationView
+
     window.ApplicationView = Backbone.View.extend({
+        debuggerTag: 'ApplicationView',
         model: Session,
+        templates: {
+            subscription: _.template('/service/subscriptions/${username}')
+        },
         /*events: {
             "click input.loginButton" : "login"
         },*/
@@ -252,12 +315,12 @@ $(document).ready(function() {
                 console.debug("Session Already Established - rendering app.");
                 this.loginView.hide();
                 this.el.show();
+                this.refreshSubscriptions();
             } else if (session.hasCookie()) {
-                // already have a cookie, so we'll try to re-login with it...
                 console.debug("Session Cookie Present - attempting " +
                               "to re-authenticate.");
                 if (!session.login()) {
-                    console.debug("Session Cookie Invalid " + 
+                    console.debug("Session Cookie Invalid " +
                                   "- User Login Required.");
                     this.loginView.render();
                 }
@@ -267,10 +330,18 @@ $(document).ready(function() {
             }
             return this;
         },
+        refreshSubscriptions: function() {
+            var username = this.model.get('username');
+            /*
+            this.subscriptions = new SubscriptionList({
+                url: this.templates.subscription({user: username}),
+                el: this.$("#subscriptions")
+            });
+            */
+        },
         handleConnected: function(_, connected) {
             if (connected) {
-                this.loginView.hide();
-                this.el.show();
+                this.render();
             } else {
                 Notify.grumble('WebSocket connection broken!\n' +
                                'Attempting to re-establish session....');
@@ -283,7 +354,7 @@ $(document).ready(function() {
         }
     });
 
-    window._session = new Session();
+    window._session = new Session({username: $.cookie('nodewatch.user')});
     window._application =
         new ApplicationView({el: $('#application'), model: _session});
     _application.render();
