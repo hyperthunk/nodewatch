@@ -1,15 +1,12 @@
 <html>
     <head>
-        <!--
-        TODO: look at that FOSS collaboration site (erlang one) and pinch layout.....
-        -->
         <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-        <title>jQuery UI Example Page</title>
-        <link type="text/css" href="/static/css/redmond/jquery-ui-1.8.2.custom.css" rel="stylesheet" />
-        <link type="text/css" href="/static/css/default.css" rel="Stylesheet"/>
-        <link type="text/css" href="/static/css/jquery.notice.css" rel="Stylesheet"/>
-        <link type="text/css" href="/static/css/jquery.hintbox.css" rel="Stylesheet"/>
-        <link type="text/css" href="/static/css/jquery.validator.css" rel="Stylesheet"/>
+        <title>Nodewatch Dashboard</title>
+        <link type="text/css" href="/static/css/redmond/jquery-ui-1.8.2.custom.css" media="screen" rel="stylesheet" />
+        <link type="text/css" href="/static/css/base.css" media="screen" rel="stylesheet" />
+        <link type="text/css" href="/static/css/jquery.notice.css" media="screen" rel="Stylesheet"/>
+        <link type="text/css" href="/static/css/jquery.hintbox.css" media="screen" rel="Stylesheet"/>
+        <link type="text/css" href="/static/css/jquery.validator.css" media="screen" rel="Stylesheet"/>
         <script type="text/javascript" src="/static/js/jquery-1.5.1.min.js"></script>
         <script type="text/javascript" src="/static/js/jquery-ui-1.8.11.custom.min.js"></script>
         <script type="text/javascript" src="/static/js/jquery.collapsible.js"></script>
@@ -17,38 +14,138 @@
         <script type="text/javascript" src="/static/js/jquery.notice.js"></script>
         <script type="text/javascript" src="/static/js/jquery.validator.js"></script>
         <script type="text/javascript" src="/static/js/jquery.cookie.js"></script>
-        <script type="text/javascript" src="/static/js/underscore-min.js"></script>
+        <script type="text/javascript" src="/static/js/underscore.js"></script>
         <script type="text/javascript" src="/static/js/pure_min.js"></script>
         <script type="text/javascript" src="/static/js/backbone-min.js"></script>
-        <script type="text/javascript" src="/static/js/models.js"></script>
-        <script type="text/javascript" src="/static/js/views.js"></script>
-        <script type="text/javascript" src="/static/js/controllers.js"></script>
-        <script type="text/javascript" src="/static/js/application.js"></script>
+        <script type="text/javascript" src="/static/js/nodewatch.helpers.js"></script>
+        <script type="text/javascript" src="/static/js/nodewatch.models.js"></script>
+        <script type="text/javascript" src="/static/js/nodewatch.views.js"></script>
+        <script type="text/javascript" src="/static/js/nodewatch.controllers.js"></script>
+        <script type="text/javascript" src="/static/js/nodewatch.application.js"></script>
     </head>
     <body>
         <div id="application" style="display: none">
-            <div id="tabnav">
-                <ul>
-                    <li><a href="#dashboard">Dashboard</a></li>
-                    <li><a href="#settings">Settings</a></li>
-                    <li><a href="#subscriptions">Account/Subscriptions</a></li>
-                </ul>
-                <div id="dashboard">
-                    Ut enim ad minim veniam, quis nostrud exercitation ullamco 
-                    laboris nisi ut aliquip ex ea commodo consequat.
+            <table class="layout-grid" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td class="left-nav">
+                        <dl class="demos-nav">
+                            <div id="navbar-node">
+                                <dt>Nodes</dt>
+                                <!-- see #navbar-node.template -->
+                            </div>
+                            <dt>Dashboards</dt>
+                                <dd><a href="#healthcheck/">Node Healthcheck</a></dd>
+                                <dd><a href="#perfmon/">Performance Monitors</a></dd>
+                                <dd><a href="#tracetimer/">Trace Tools</a></dd>
+                                <dd><a href="#tracetimer/">Time Budgeting</a></dd>
+                            <dt>Reports/Exporting</dt>
+                                <dd><a href="#exports">Export History</a></dd>
+                                <dd><a href="#reports/builder">Build A Report</a></dd>
+                            <dt>Utilities</dt>
+                                <dd><a href="#">Alarms/Traps</a></dd>
+                                <dd><a href="#">Pub/Sub + Feeds</a></dd>
+                            <dt>Information</dt>
+                                <dd><a href="#service-info">Service Info</a></dd>
+                                <dd><a href="https://github.com/hyperthunk/nodewatch/wiki">Documentation</a></dd>
+                                <dd><a href="https://github.com/hyperthunk/nodewatch/issues">Bugs/Issues</a></dd>
+                                <dd><a href="https://github.com/hyperthunk/nodewatch">Source Code</a></dd>
+                        </dl>
+                    </td>
+                    <!-- We inject content here using some code like:
+                    
+                    $('td.normal div.normal') 
+                        .empty()
+                        .append('<h3 class="demo-header">'+ header +'</h3>')
+                        .append('<div id="demo-config"></div>')
+                        .find('#demo-config')
+                        .append('<div id="demo-frame"></div><div id="demo-config-menu"></div><div id="demo-link"><a class="demoWindowLink" href="#"><span class="ui-icon ui-icon-newwin"></span>Open demo in a new window</a></div>')
+    					.find('#demo-config-menu')
+    						.load(section + '/index.html .demos-nav', function() {
+    							$('#demo-config-menu a').each(function() {
+    								this.setAttribute('href', section + '/' + this.getAttribute('href').replace(/.+\/([^\/]+)/,'$1'));
+    								$(this).attr('target', 'demo-frame');
+    								$(this).click(function() {
+
+    									resetDemos();
+
+    									$(this).parents('ul').find('li').removeClass('demo-config-on');
+    									$(this).parent().addClass('demo-config-on');
+    									$('#demo-notes').fadeOut();
+
+    									//Set the hash to the actual page without ".html"
+    									window.location.hash = header + '|' + this.getAttribute('href').match((/\/([^\/\\]+)\.html/))[1];
+
+    									loadDemo(this.getAttribute('href'));
+
+    									return false;
+    								});
+    							});
+
+    							if (window.location.hash) {
+    								var demo = window.location.hash.split('|')[1];
+    								$('#demo-config-menu a').each(function(){
+    									if (this.href.indexOf(demo + '.html') !== -1) {
+    										$(this).parents('ul').find('li').removeClass('demo-config-on');
+    										$(this).parent().addClass('demo-config-on');									
+    										loadDemo(this.href);										
+    									}
+    								});
+    							}
+
+    							updateDemoNotes();
+    						})
+    					.end()
+    					.find('#demo-link a')
+    						.bind('click', function(ev){
+    							window.open(this.href);
+    							ev.preventDefault();
+    						})
+    					.end()
+    				.end()
+                    -->
+                    <td class="normal">
+                        <div class="normal">
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id="templates" class="ui-helper-hidden">
+            <!-- 
+                Map the node in the nav bar to the url #/nodes/:id -
+                HINT: we use a + pure directive in the view to do this... 
+            -->
+            <div class="navbar-node-template">
+                <dt>Nodes</dt>
+                <dd><a href="#nodes/"></a></dd>
+            </div>
+            
+            <div id="nodeset-template" class="ui-helper-hidden">
+                <h3 class="demo-header">+ header +</h3>
+                <div id="demo-config"></div>
+                <div id="demo-frame"></div>
+                <div id="demo-config-menu">
+                    <div class="demos-nav">
+                        <h4>Examples</h4>
+                        <ul>
+                            <li class="demo-config-on"><a href="default.html">Default functionality</a></li>
+                            <li><a href="placeholder.html">Drop placeholder</a></li>
+                            <li><a href="connect-lists.html">Connect lists</a></li>
+                            <li><a href="connect-lists-through-tabs.html">Connect lists through tabs</a></li>
+                            <li><a href="empty-lists.html">Handle empty lists</a></li>
+                            <li><a href="items.html">Include / exclude items</a></li>
+                            <li><a href="delay-start.html">Delay start</a></li>
+                            <li><a href="display-grid.html">Display as grid</a></li>		
+                            <li><a href="portlets.html">Portlets</a></li>
+                        </ul>
+                    </div>
                 </div>
-                <div id="settings">
-                    Ut enim ad minim veniam, quis nostrud exercitation ullamco 
-                    laboris nisi ut aliquip ex ea commodo consequat.
-                </div>
-                <div id="subscriptions">
-                    Ut enim ad minim veniam, quis nostrud exercitation ullamco 
-                    laboris nisi ut aliquip ex ea commodo consequat.
+                <div id="demo-link">
+                    <a class="demoWindowLink" href="#">
+                        <span class="ui-icon ui-icon-newwin"></span>Open demo in a new window
+                    </a>
                 </div>
             </div>
-        </div>
-        <div id="nodelist-template" class="ui-helper-hidden">
-            <p> foo bar </p>
         </div>
         <div id="loginPanel">
             <div />

@@ -21,7 +21,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
+$(document).ready(function() {
 
-// 
+    _.templateSettings = {
+      interpolate : /\$\{(.+?)\}/g,
+      evaluate:     /#\{(.+?)\}/g
+    };
 
-
+    window._session = new Session({username: $.cookie('nodewatch.user')});
+    window._application =
+        new ApplicationView({el: $('#application'), model: _session});
+    _application.render();
+});

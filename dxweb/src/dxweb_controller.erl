@@ -25,15 +25,17 @@
 -module(dxweb_controller).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([get/3, get/4]).
+-export([get/3]).
 
-get(Req, _SID, "nodes") ->
-    respond(Req, dxkit:which_nodes()).
-
-get(Req, _SID, "nodes", NodeId) ->
+get(Req, _SID, ["nodes"]) ->
+    respond(Req, dxkit:which_nodes());
+get(Req, _SID, ["nodes", NodeId]) ->
     respond_with_data(Req, dxkit:find_node(NodeId));
-get(Req, _SID, "subscriptions", User) ->
-    respond_with_data(Req, dxdb:find_user_subscriptions(User)).
+get(Req, _SID, ["subscriptions", User]) ->
+    respond_with_data(Req, dxdb:find_user_subscriptions(User));
+get(Req, _SID, ["subscriptions", User, NodeId]) ->
+    respond_with_data(Req, 
+        dxdb:find_user_subscriptions_for_node(User, NodeId)).
 
 respond_with_data(Req, []) ->
     not_found(Req);

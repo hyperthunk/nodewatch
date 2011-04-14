@@ -78,7 +78,7 @@ handle_http_request(Req, invalid, _) ->
 handle_http_request(Req, SID, ["service"|Resource]) ->
     apply(dxweb_controller, 
             http_method_to_function(Req), 
-            [Req,SID|Resource]).
+            [Req,SID,Resource]).
 
 %%
 %% NB: This callback (loop) simply idles the websocket to keep it open,
