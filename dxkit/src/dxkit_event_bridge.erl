@@ -1,6 +1,6 @@
 %% ------------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring: Bridge between collector processes and subscribers
+%% Erlang System Monitoring Kit: Bridge between event manager and handlers
 %%
 %% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,35 +22,32 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% ------------------------------------------------------------------------------
+%%
+%% @doc 
+%%
+%% ------------------------------------------------------------------------------
 
 -module(dxkit_event_bridge).
--author('Tim Watson <watson.timothy@gmail.com>').
--behaviour(gen_event).
+-behaviour(supervisor).
 
--export([init/1,
-         handle_call/2,
-         handle_event/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
+-export([start_link/0]).
+-export([init/1]).
 
--export([start_link/0, add_subscriber/3, 
+-export([permanent_subscriber/2, 
          poke_subscribers/0, publish_event/1]).
 
--include_lib("dxcommon/include/dxcommon.hrl").
+-include_lib("fastlog/include/fastlog.hrl").
 
 %%
 %% Public API
 %%
 
 start_link() ->
-    Result = gen_event:start_link({local, dxkit_event_handler}),
-    gen_event:add_handler(dxkit_event_handler, ?MODULE, []),
-    Result.
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-add_subscriber(Mod, Func, ArgSpec) ->
-    gen_event:call(dxkit_event_handler, ?MODULE,
-            {add_subscriber, {Mod, Func, ArgSpec}}, infinity).
+permanent_subscriber(Handler, Args) ->
+    ?INFO("Starting Handler ~p~n", [Handler]),
+    supervisor:start_child(?MODULE, [Handler, Args]).
 
 poke_subscribers() ->
     gen_event:notify(dxkit_event_handler, poke).
@@ -58,41 +55,13 @@ poke_subscribers() ->
 publish_event(Event) ->
     gen_event:notify(dxkit_event_handler, Event).
 
-%% TODO: remove_subscriber.... ;)
+%%
+%% Supervisor callbacks
+%%
 
 init(_) ->
-  {ok, []}.
-
-%%
-%% @private
-%%
-handle_event(Message, State) ->
-    [ apply(Mod, Func, [Message|ArgSpec]) || {Mod, Func, ArgSpec} <- State ],
-    {ok, State}.
-
-%%
-%% @private
-%%
-handle_call({add_subscriber, {_Mod, _Func, _ArgSpec}=Handler}, State) ->
-    {ok, added, [Handler|State]};
-handle_call(_, State) ->
-    {ok, ignored, State}.
-
-%%
-%% @private
-%%
-handle_info(_Info, State) ->
-    {ok, State}.
-
-%%
-%% @private
-%%
-terminate(_Reason, _State) ->
-    ok.
-
-%%
-%% @private
-%%
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    ChildTemplate = [{'_',
+        {dxkit_event_subscriber, start_link, []},
+         transient, 5000, worker, [gen_server]}],
+    {ok, {{simple_one_for_one, 10, 10}, ChildTemplate}}.
 

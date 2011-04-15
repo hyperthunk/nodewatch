@@ -43,6 +43,8 @@
 -export([start_link/0, stop/0]).
 -export([forward_event/1]).
 
+-include_lib("fastlog/include/fastlog.hrl").
+
 %%
 %% Public API
 %%
@@ -67,6 +69,7 @@ stop() ->
 
 %% @hidden
 forward_event(Event) ->
+    ?DEBUG("Forward Event: ~n[~p]~n", [Event]),
     gen_server:call(?MODULE, Event).
 
 %%

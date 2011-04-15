@@ -120,6 +120,9 @@ ApplicationView = Backbone.View.extend({
     initialize: function() {
         _.bindAll(this, 'render', 'handleConnected', 'refreshData');
         this.model.bind('change:connected', this.handleConnected);
+        this.model.bind('websock:data', function(ev) { 
+            console.debug('got data from websocket.....');
+        });
         this.model.view = this;
 
         var loginPanel = $('#loginPanel');

@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Commons
+%% Erlang System Monitoring: Top Level Supervisor
 %%
-%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,27 +22,36 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc
-%%
-%% -----------------------------------------------------------------------------
--module(dxcommon.datetime).
--author('Tim Watson <watson.timothy@gmail.com>').
--include("dxcommon.hrl").
 
--compile(export_all).
+-module(dxkit_event_sup).
+-behaviour(supervisor).
 
--import(httpd_util).
--import(calendar).
+%% API
+-export([start_link/0]).
+-export([init/1]).
 
-rfc1123_datetime(Now={_,_,_}) ->
-    rfc1123_datetime(calendar:now_to_local_time(Now));
-rfc1123_datetime(DateTime={{_,_,_}, {_,_,_}}) ->
-    httpd_util:rfc1123_date(DateTime).
+%% ===================================================================
+%% API functions
+%% ===================================================================
 
-snapshot() ->
-    Now = calendar:now_to_universal_time(erlang:now()),
-    calendar:datetime_to_gregorian_seconds(Now).
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
+
+init(_) ->
+    Children = [
+        {dxkit_event_handler, 
+            {gen_event, start_link, [{local, dxkit_event_handler}]},
+             permanent, 5000, worker, dynamic},
+        {dxkit_event_bridge,
+            {dxkit_event_bridge, start_link, []},
+             permanent, 5000, supervisor, dynamic}
+    ],
+    {ok, {{rest_for_one, 5, 5}, Children}}.
+%% gen_event:start_link({local, dxkit_event_handler})
+
+
+

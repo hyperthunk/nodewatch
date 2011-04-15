@@ -137,15 +137,17 @@ sync(nodedown, #node_info{status=nodeup, uptime=Up, downtime=Down}=Node) ->
     Node#node_info{uptime=Up, downtime=sync(Down)};
 sync(Then, #node_info{status=Now, uptime=Up, 
                       downtime=Down}=Node) when Then == Now ->
+    Timestamp = dxcommon.datetime:snapshot(),
     {Uptime, Downtime} = case Then of
         nodeup ->
-            {sync(Up), Down};
+            {sync(Up), Down#connect_time{snapshot=Timestamp}};
         nodedown ->
-            {Up, sync(Down)};
+            {Up#connect_time{snapshot=Timestamp}, sync(Down)};
         _ ->
             {Up, Down}
     end,
-    Node#node_info{uptime=Uptime, downtime=Downtime};
+    Node#node_info{uptime=Uptime, 
+                   downtime=Downtime};
 sync(unknown, Node) ->
     Node.
 
@@ -238,7 +240,7 @@ handle_call(_Msg, _, State) ->
 
 handle_cast({blacklist, HN}, State) ->
     ets:insert(dx.net.blacklist, HN),
-    fastlog:info("Host ~p is now blacklisted!~n", [HN#h_name.fullname]),
+    fastlog:info(dxkit.net, "Host ~p is now blacklisted!~n", [HN#h_name.fullname]),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -255,7 +257,7 @@ handle_info({'EXIT', Worker, Reason}, State) ->
     gen_server:reply(Client, {error, Reason}),
     {noreply, State};
 handle_info(Info, State) ->
-    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+    fastlog:debug(dxkit.net, "node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -349,7 +351,7 @@ find_entries(Host, Conf) ->
     sets:to_list(Found).
 
 find_host_entries(Domain, {Host, Conf, Entries}) ->
-    fastlog:debug("Checking domain ~p for hosts named ~p~n", [Domain, Host]),
+    fastlog:debug(dxkit.net, "Checking domain ~p for hosts named ~p~n", [Domain, Host]),
     Revised = case read_conf(shortnames, Conf) of
         [] ->
             Entries;
@@ -364,7 +366,7 @@ find_host_entries(Domain, {Host, Conf, Entries}) ->
     Name = hostname(Host, Domain),
     case is_blacklisted(Name, Conf) of
         true ->
-            fastlog:debug("Blacklisted host ~p ignored~n", 
+            fastlog:debug(dxkit.net, "Blacklisted host ~p ignored~n", 
                           [Name#h_name.fullname]),
             {Host, Conf, Entries};
         false ->
@@ -381,19 +383,19 @@ find_host_entries(Domain, {Host, Conf, Entries}) ->
                             case gen_tcp:connect(H_Name, epmd_port(), 
                                                  [inet], Timeout) of
                                 {error, _} ->
-                                    fastlog:debug("Unable to connect to host ~p "
+                                    fastlog:debug(dxkit.net, "Unable to connect to host ~p "
                                                   "- skipping~n", [Host]),
                                     maybe_blacklist(Name, Conf),
                                     {Host, Conf, Revised};
                                 {ok, Sock} ->
-                                    fastlog:debug("Connected to epmd on ~p~n",
+                                    fastlog:debug(dxkit.net, "Connected to epmd on ~p~n",
                                                     [Host]),
                                     ok = gen_tcp:close(Sock),
                                     %% there is a host `Name' on this domain
                                     {Host, Conf, sets:add_element(Name, Revised)}
                             end;
                         {error, _} ->
-                            fastlog:debug("No dns resolution for ~p~n", 
+                            fastlog:debug(dxkit.net, "No dns resolution for ~p~n", 
                                           [Name#h_name.fullname]),
                             maybe_blacklist(Name, Conf),
                             {Host, Conf, Revised}

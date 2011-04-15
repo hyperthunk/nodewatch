@@ -1,7 +1,7 @@
 {application,dxweb,
  [{description,"Diagnostic and Monitoring Web Dashboard"},
   {vsn,"0.0.1"},
-  {mod,{appstart_loader,[]}},
+  {mod,{appstart_loader,[{fastlog, configure}]}},
   {modules,[dxweb,
             dxweb_sup,
             dxweb_http_handler,

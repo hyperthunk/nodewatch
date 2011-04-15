@@ -57,6 +57,8 @@ remove_subscriber(SubscriberKey) when is_list(SubscriberKey) ->
 remove_subscriber(SubscriberKey) when is_atom(SubscriberKey) ->
     %% NB: even with supervisor2, sending a kill signal to the sensor 
     %% is the wrong thing to do - so we let the sensor kill itself and remove it.
+
+    %% TODO: verify that there isn't a race here.
     ok = dxkit_sensor:stop(SubscriberKey),
     supervisor:delete_child(?MODULE, SubscriberKey).
 
@@ -76,6 +78,8 @@ init(_) ->
 
 start_child(User, Subscriber, Node) ->
     %% TODO: get dxdb to collate the node /w sensors in one shot
+    fastlog:debug("Starting subscription ~p:~p on ~p~n",
+                  [User, Subscriber, Node]),
     Sensors = dxdb:find_instrumented_sensors_for_node(User, Node),
     Consumer = dxkit_event_consumer:new(Subscriber, Node, Sensors),
     ChildSpec = {Consumer:name(),

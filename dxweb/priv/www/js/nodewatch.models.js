@@ -123,8 +123,17 @@ Session = Backbone.Model.extend({
 
     websocketConnect: function() {
         var ws = new WebSocket(this.websocketUrl());
+        var self = this;
+        ws.onopen = function() {
+            self.set({connected: true});
+        };
+        ws.onmessage = function (evt) {
+            self.trigger("websock:data", evt);
+        }
+        ws.onclose = function() {
+            self.set({connected: false});
+        }
         this.set({websocket: ws});
-        this.set({connected: true});
         return this;
     },
 

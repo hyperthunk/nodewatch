@@ -160,9 +160,6 @@ handle_info({timeout, _TRef, refresh},
             _ -> 
                 ok
         end
-        %% update(Scan)
-        %% [ insert(dxkit_net:connect(N)) || N <- NodeList, N =/= node() ]
-        %% gen_event:notify(dxkit_event_handler, {world, refresh})
     end,
     spawn_link(Worker),
     set_timer(Timeout),
@@ -170,7 +167,7 @@ handle_info({timeout, _TRef, refresh},
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info(Other, State) ->
-    fastlog:debug("Other ~p~n", [Other]),
+    fastlog:debug(dxkit.world, "Other ~p~n", [Other]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -187,7 +184,7 @@ start_monitor() ->
     net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]).
 
 set_timer(Timeout) ->
-    fastlog:debug("[World] Starting refresh timer with a "
+    fastlog:debug(dxkit.world, "Starting refresh timer with a "
                   "~p ms interval.~n", [Timeout]),
     erlang:start_timer(Timeout, ?MODULE, refresh).
 
@@ -199,7 +196,7 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
         _ ->
             dxkit_net:connect(Node)
     end,
-    fastlog:info("[World] Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
+    fastlog:info(dxkit.world, "Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
     ets:insert(Tab, NodeInfo),
     %% TODO: just send the actual node!?
     gen_event:notify(dxkit_event_handler, {world, {NodeStatus, NodeInfo}}),

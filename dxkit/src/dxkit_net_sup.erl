@@ -40,7 +40,6 @@
 %% ===================================================================
 
 start_link(StartArgs) ->
-    io:format("dxkit_net_sup: Start Args = ~p~n", [StartArgs]),
     supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
 
 %% ===================================================================
@@ -48,7 +47,6 @@ start_link(StartArgs) ->
 %% ===================================================================
 
 init(WorldArgs) ->
-    fastlog:debug("dxkit_net_sup: WorldArgs Args = ~p~n", [WorldArgs]),
     Children = [
         {dxkit_net,
             {dxkit_net, start_link, []},

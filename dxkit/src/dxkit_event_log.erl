@@ -44,6 +44,8 @@
 %% (or add disk_log support and the concept of multiple appenders to fastlog)
 -record(state, {logfile, level}).
 
+-include_lib("fastlog/include/fastlog.hrl").
+
 enable() ->
     gen_event:add_handler(dxkit_event_handler, ?MODULE, []).
 
@@ -54,7 +56,7 @@ init([]) ->
   {ok, #state{}}.
 
 handle_event(Message, State) ->
-    fastlog:debug("Event: ~p~n", [Message]),
+    ?DEBUG("Event: ~p~n", [Message]),
     {ok, State}.
 
 %%

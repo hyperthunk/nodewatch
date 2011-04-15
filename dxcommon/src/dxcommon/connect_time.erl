@@ -33,17 +33,16 @@
 
 -import(calendar).
 -import(erlang).
+-import(dxcommon).
 
 new() ->
     %% shortcut
-    Now = calendar:now_to_universal_time(erlang:now()),
-    GSecs = calendar:datetime_to_gregorian_seconds(Now),
+    GSecs = dxcommon.datetime:snapshot(),
     #connect_time{snapshot=GSecs}.
 
 sync(#connect_time{elapsed=Elapsed,
                    snapshot=ThenGS}=CT) ->
-    Now = calendar:now_to_universal_time(erlang:now()),
-    NowGS = calendar:datetime_to_gregorian_seconds(Now),
+    NowGS = dxcommon.datetime:snapshot(),
     CT#connect_time{elapsed=(Elapsed + (NowGS - ThenGS)),
                     snapshot=NowGS}.
     
