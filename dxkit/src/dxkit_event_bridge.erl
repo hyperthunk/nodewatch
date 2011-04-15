@@ -61,7 +61,6 @@ publish_event(Event) ->
 
 init(_) ->
     ChildTemplate = [{'_',
-        {dxkit_event_subscriber, start_link, []},
+        {dxkit_event_handler_bridge, start_link, []},
          transient, 5000, worker, [gen_server]}],
     {ok, {{simple_one_for_one, 10, 10}, ChildTemplate}}.
-

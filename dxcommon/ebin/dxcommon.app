@@ -6,6 +6,7 @@
    ['dxcommon.connect_time',
     'dxcommon.data',
     'dxcommon.datetime',
+    'dxcommon.event',
     'dxcommon.node_info',
     'dxcommon.string',
     'dxcommon.subscription',

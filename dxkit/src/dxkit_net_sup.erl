@@ -52,7 +52,7 @@ init(WorldArgs) ->
             {dxkit_net, start_link, []},
              permanent, 5000, worker, [gen_server]},
         {dxkit_world_server,
-            {dxkit_world_server, start_link, [WorldArgs]},
+            {dxkit_world, start_link, [WorldArgs]},
              permanent, 5000, worker, [gen_server]}
         %% ,
         %% {dxkit_samplers,

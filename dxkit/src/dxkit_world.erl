@@ -32,7 +32,7 @@
 %%
 %% -----------------------------------------------------------------------------
 
--module(dxkit_world_server).
+-module(dxkit_world).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
 -export([init/1,

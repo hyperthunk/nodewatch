@@ -56,13 +56,13 @@ disable_subscriptions(Key) ->
     dxkit_subscription_sup:remove_subscriber(Key).
 
 find_node(NodeId) ->
-    dxkit_world_server:node(NodeId).
+    dxkit_world:node(NodeId).
 
 %%
 %% @doc Returns all the nodes that are currently being monitored.
 %%
 which_nodes() ->
-    dxkit_world_server:nodes().
+    dxkit_world:nodes().
 
 add_event_sink(Mod) ->
     add_event_sink(Mod, []).

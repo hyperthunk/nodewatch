@@ -23,11 +23,12 @@
 %% THE SOFTWARE.
 %% ------------------------------------------------------------------------------
 %%
-%% @doc When used in conjunction with eper, this module handles monitoring events.
+%% @doc When used in conjunction with eper, this module sets up monitoring events.
 %% One module is created per active subscriber, with the subscriber's client key 
 %% providing a reply-to mechanism outside this application.
 %%
-%% This process runs on the `nodewatch' host, not the node(s) being monitored.
+%% The spawned process runs on the `nodewatch' host and receives data from another
+%% (corrolary) process running on the target node.
 %%
 %% ------------------------------------------------------------------------------
 

@@ -40,8 +40,7 @@
          terminate/2,
          code_change/3]).
 
--export([start_link/0, stop/0]).
--export([forward_event/1]).
+-export([start_link/0, start_listening/0, sink_event/1]).
 
 -include_lib("fastlog/include/fastlog.hrl").
 
@@ -49,28 +48,15 @@
 %% Public API
 %%
 
-%%
-%% @doc Starts and registers the database subsystem
-%%
 start_link() ->
-    case gen_server:start_link({local, ?MODULE}, ?MODULE, [], []) of
-        {ok, _Pid}=Ok ->
-            dxkit:add_event_sink(?MODULE, forward_event),
-            Ok;
-        Other ->
-            Other
-    end.
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-%%
-%% @doc Explicitly stops the server.
-%%
-stop() ->
-    gen_server:cast(?MODULE, stop).
+start_listening() ->
+    gen_server:cast(?MODULE, start),
+    ignore.
 
-%% @hidden
-forward_event(Event) ->
-    ?DEBUG("Forward Event: ~n[~p]~n", [Event]),
-    gen_server:call(?MODULE, Event).
+sink_event(Message) ->
+    gen_server:cast(?MODULE, {sink, Message}).
 
 %%
 %% gen_server callbacks
@@ -78,33 +64,35 @@ forward_event(Event) ->
 
 %% @hidden
 init(_) ->
+    process_flag(trap_exit, true),
     {ok, []}.
 
-%% @hidden
-handle_call({world, {_NodeStatus, _NodeInfo}=Ev}, _From, State) ->
-    %% TODO: fix this so that somewhere (?) we serialised the record properly
-    dxweb_session:send_all([Ev]),
+%% TODO: Use the event SID if present.....
+
+handle_call(Msg, _From, State) ->
+    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
+    {noreply, State}.
+
+handle_cast({sink, {world, {NodeStatus, NodeInfo}}}, State) ->
+    Ev = [{event, [{tag, atom_to_binary(NodeStatus, utf8)},
+                   {data, dxcommon.data:jsonify(NodeInfo)}]}],
+    dxweb_session:send_all(Ev),
     {noreply, State};
-handle_call({ID, _, Event}, _From, State) ->
-    dxweb_session:send(ID, Event),
+handle_cast({sink, Ev}, State) ->
+    ?DEBUG("Sinking Event: ~p~n", [Ev]),
+    %% dxweb_session:send_all(Ev),
     {noreply, State};
-handle_call(_Msg, _From, State) ->
+handle_cast(start, State) ->
+    Res = dxkit:add_event_sink(dxweb_event_handler),
+    ?DEBUG("Event sink added: ~p~n", [Res]),
     {noreply, State}.
 
-%% @hidden
-handle_cast(stop, State) ->
-    {stop, normal, State};
-handle_cast(_Msg, State) ->
+handle_info(Info, State) ->
+    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
-%% @hidden
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%% @hidden
 terminate(_Reason, _State) ->
-    terminated.
+    ok.
 
-%% @hidden
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

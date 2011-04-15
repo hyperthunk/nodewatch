@@ -8,6 +8,7 @@
             dxweb_http_server,
             dxweb_util,
             dxweb_event_sink,
+            dxweb_event_handler,
             dxweb_invalid_websocket,
             dxweb_session,
             dxweb_controller]},

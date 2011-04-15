@@ -27,7 +27,7 @@
 %%
 %% ------------------------------------------------------------------------------
 
--module(dxkit_event_subscriber).
+-module(dxkit_event_handler_bridge).
 -author('Tim Watson <watson.timothy@gmail.com>').
 -behaviour(gen_server).
 

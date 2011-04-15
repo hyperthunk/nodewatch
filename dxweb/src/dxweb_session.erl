@@ -48,6 +48,7 @@
          all_sessions/0, get_user_from_req/1, suspend_session_websocket/1]).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
+-include_lib("fastlog/include/fastlog.hrl").
 
 -record(session, {sid, user, websock}).
 
@@ -75,7 +76,9 @@ send(SessionID, Data) ->
 send_term(SessionID, Term) ->
     case lookup_websocket(SessionID) of
         {error, Reason} ->
-            fastlog:error("[session-~s] ~s", [SessionID, Reason]);
+            ?WARN("No Websocket(s) Registered for SID "
+                  "~p~n@BEGIN_DATA@~n~p~n@END_DATA@~n", 
+                  [{SessionID, Reason}, Term]);
         WebSock ->
             WebSock:send(Term)
     end.
@@ -84,7 +87,7 @@ send_term(SessionID, Term) ->
 %% @doc Sends `Term' to all open websockets - runs out of band.
 %%
 send_all(Term) ->
-    gen_server:call(?MODULE, {send_all, Term}).
+    gen_server:call(?MODULE, {send_all, Term}, infinity).
 
 set_websocket(SessionID, WebSock) ->
     gen_server:call(?MODULE, {set_websocket, SessionID, WebSock}).
@@ -175,7 +178,7 @@ handle_call({send_all, Term}, _, State) ->
     Data = dxweb_util:marshal(Term),
     lists:foreach(fun(S) -> (S#session.websock):send(Data) end,
                   ets:tab2list('dxweb.sessions')),
-    {noreply, State};
+    {reply, ok, State};
 handle_call(Msg, {_From, _Tag}, State) ->
     fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
     {reply, State, State}.

@@ -38,19 +38,11 @@
         ,terminate/2
         ,code_change/3]).
 
--export([enable/0, disable/0]).
-
 %% TODO: use disk_log for capture instead of fastlog 
 %% (or add disk_log support and the concept of multiple appenders to fastlog)
 -record(state, {logfile, level}).
 
 -include_lib("fastlog/include/fastlog.hrl").
-
-enable() ->
-    gen_event:add_handler(dxkit_event_handler, ?MODULE, []).
-
-disable() ->
-    gen_event:remove_handler(dxkit_event_handler, ?MODULE, []).
 
 init([]) ->
   {ok, #state{}}.

@@ -50,15 +50,16 @@ start_link(StartArgs) ->
 %% ===================================================================
 
 init([StartArgs]) ->
-    io:format("~p StartArgs: ~p~n", [?MODULE, StartArgs]),
     WebConfig = proplists:get_value(webconfig, StartArgs),
-    io:format("~p WebConfig: ~p~n", [?MODULE, WebConfig]),
     Children = [
+        {dxweb_event_sink, 
+            {dxweb_event_sink, start_link, []},
+            permanent, 5000, worker, [gen_server]},
         {dxweb_http_server,
             {dxweb_http_server, start_link, [WebConfig]},
             permanent, infinity, supervisor, [supervisor]},
-        {dxweb_event_sink, 
-            {dxweb_event_sink, start_link, []},
-            permanent, 5000, worker, [gen_server]}
+        {dxweb_post_start, 
+            {dxweb_event_sink, start_listening, []},
+            temporary, brutal_kill, worker, dynamic}
     ],
     {ok, {{one_for_one, 10, 10}, Children}}.

@@ -1,8 +1,8 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring: Top Level Supervisor
+%% Erlang System Monitoring Dashboard: Event Sink
 %%
-%% Copyright (c) 2008-2010 Tim Watson (watson.timothy@gmail.com)
+%% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,59 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
+%% @author Tim Watson [http://hyperthunk.wordpress.com]
+%% @copyright (c) Tim Watson, 2010
+%% @since: March 2010
+%%
+%% @doc Attaches to the dxkit/web event bridge, proxying events
+%%
+%% -----------------------------------------------------------------------------
+-module(dxweb_event_handler).
+-author('Tim Watson <watson.timothy@gmail.com>').
+-behaviour(gen_event).
 
--module(dxkit_sup).
--behaviour(supervisor).
+-export([init/1,
+         handle_event/2,
+         handle_call/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
-%% API
--export([start_link/1]).
--export([init/1]).
+-include_lib("fastlog/include/fastlog.hrl").
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
+%%
+%% gen_event callbacks
+%%
 
-start_link(StartArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
+init(_) ->
+  {ok, []}.
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
+handle_event(Message, State) ->
+    ?DEBUG("Event: ~p~n", [Message]),
+    dxweb_event_sink:sink_event(Message),
+    {ok, State}.
 
-init(StartArgs) ->
-    WorldArgs = proplists:get_value(world, StartArgs, []),
-    Children = [
-        {dxkit_event_subsystem, 
-            {dxkit_event_sup, start_link, []},
-             permanent, 5000, supervisor, [supervisor]},
-        {dxkit_net_subsystem,
-            {dxkit_net_sup, start_link, [WorldArgs]},
-             permanent, infinity, supervisor, [supervisor]},
-        {dxkit_monitor_subscription_subsystem,
-            {dxkit_subscription_sup, start_link, []},
-             permanent, infinity, supervisor, dynamic}
-    ],
-    {ok, {{one_for_one, 5, 5}, Children}}.
+%%
+%% @private
+%% 
+handle_call(_, State) ->
+    {ok, ignored, State}.
+
+%%
+%% @private
+%% 
+handle_info(_Info, State) ->
+    {ok, State}.
+
+%%
+%% @private
+%% 
+terminate(_Reason, _State) ->
+    ok.
+
+%%
+%% @private
+%% 
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+

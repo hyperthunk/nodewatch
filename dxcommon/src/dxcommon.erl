@@ -113,6 +113,10 @@ members(Type) ->
 type_members(Type, Mod) ->
     Mod:'#info-'(Type, fields).
 
+%% TODO: generate this boilerplate away....
+
+type(event) ->
+    event();
 type(node_info) ->
     node_info();
 type(subscription) ->
@@ -126,13 +130,17 @@ type(Other) ->
                     [dxcommon.connect_time,
                      dxcommon.node_info,
                      dxcommon.subscription,
-                     dxcommon.user]) of
+                     dxcommon.user,
+                     dxcommon.event]) of
         [TypeMod] ->
             [_,B] = string:tokens(atom_to_list(TypeMod), "."),
             {list_to_atom(B), TypeMod};
         [] ->
             {error, {unknown_type, Other}}
     end.
+
+event() ->
+    {event, 'dxcommon.event'}.
 
 connect_time() ->
     {connect_time, 'dxcommon.connect_time'}.

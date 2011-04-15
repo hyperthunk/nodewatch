@@ -36,7 +36,21 @@
 -compile(export_all).
 
 -import(lists).
+-import(dxcommon).
 
+jsonify(Data) when is_record(Data, user) orelse
+                   is_record(Data, node_info) orelse
+                   is_record(Data, subscription) orelse
+                   is_record(Data, connect_time) orelse
+                   is_record(Data, event) ->
+    [dxcommon:record_to_proplist(Data)];
+jsonify(Data=[Rec|_Rest])     
+              when is_record(Rec, user) orelse
+                   is_record(Rec, node_info) orelse
+                   is_record(Rec, subscription) orelse
+                   is_record(Data, connect_time) orelse
+                   is_record(Data, event) ->
+    lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data);
 jsonify([]=L) ->
     L;
 jsonify({_K, []}=KV) ->

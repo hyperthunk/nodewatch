@@ -37,24 +37,16 @@
 %%
 %% @doc Serializes the supplied term/data.
 %%
-marshal(Data) when is_record(Data, user) orelse
-                   is_record(Data, node_info) orelse
-                   is_record(Data, subscription) ->
-    jsx:term_to_json([dxcommon:record_to_proplist(Data)]);
-marshal(Data=[#node_info{}|_Rest]) ->
-    jsx:term_to_json(
-        lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
-marshal(Data=[#subscription{}|_Rest]) ->
-    jsx:term_to_json(
-        lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
-marshal(Data=[#user{}|_Rest]) ->
-    jsx:term_to_json(
-        lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data));
 marshal([Data]) ->
     %% TODO: write an optimised encoding function for jsx, as it's quite slow.
     marshal(Data);
 marshal(Data) ->
-    jsx:term_to_json(dxcommon.data:jsonify(Data)).
+    case dxcommon.data:jsonify(Data) of
+        Json when is_tuple(Json) ->
+            jsx:term_to_json([Json]);
+        JsonList=[_|_] ->
+            jsx:term_to_json(JsonList)
+    end.
 
 %%
 %% @doc Deserializes the supplied json data.

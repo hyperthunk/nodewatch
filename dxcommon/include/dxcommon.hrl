@@ -62,6 +62,11 @@
     password            :: string()
 }).
 
+-record(event, {
+    tag  :: atom(),
+    data :: term()
+}).
+
 %% The named event handler registered by dxdb_sup on startup.
 -define(DB_EVENT, dxdb_event_handler).
 
