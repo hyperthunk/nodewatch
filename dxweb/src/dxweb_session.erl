@@ -160,7 +160,7 @@ handle_call(list, _, State) ->
     {reply, ets:tab2list('dxweb.sessions'), State};
 handle_call({set_websocket, SessionID, WebSock}, _, State) ->
     %% would be better to combine both these operations and use a match spec?
-    case ets:lookup('dxweb.sessions', SessionID) of
+    case ets:lookup('dxweb.sessions', session_id(SessionID)) of
         [Session] ->
             ets:insert('dxweb.sessions', Session#session{websock=WebSock}),
             {reply, ok, State};
@@ -168,7 +168,7 @@ handle_call({set_websocket, SessionID, WebSock}, _, State) ->
             {reply, {error, "Invalid User Session"}, State}
     end;
 handle_call({websocket, SessionID}, _, State) ->
-    case ets:lookup('dxweb.sessions', SessionID) of
+    case ets:lookup('dxweb.sessions', session_id(SessionID)) of
         [Session] ->
             {reply, Session#session.websock, State};
         _Other ->
@@ -200,6 +200,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% Internal API
 %%
+
+session_id(SessionID) when is_binary(SessionID) ->
+    binary_to_list(SessionID);
+session_id(SessionID) when is_atom(SessionID) ->
+    atom_to_list(SessionID);
+session_id(SessionID) when is_list(SessionID) ->
+    SessionID.
 
 find_user_session(User) ->
     case ets:match_object('dxweb.sessions', {'_', '_', User, '_'}) of

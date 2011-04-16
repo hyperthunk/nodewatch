@@ -71,7 +71,7 @@ start_link() ->
 
 %%
 %% @doc Find all detectable nodes. This function is equiv.
-%% to net_adm:world/0, but is fasteras it avoids needless connection
+%% to net_adm:world/0, but is faster as it avoids needless connection
 %% attempts when hosts are inaccessible and uses a short (5 second)
 %% timeout when attempting to locate epmd on the target machine.
 %%
@@ -330,6 +330,7 @@ find_nodes(Host, Conf) ->
                     []
             end
         end, HostNames)),
+    %% TODO: try [N || N <- Nodes, net_adm:ping(N) =:= pong]
     Connections = [net_adm:ping(N) || N <- Nodes],
     NodeStats = lists:zip(Connections, Nodes),
     Found = [N || {Ping, N} <- NodeStats, Ping =:= pong],

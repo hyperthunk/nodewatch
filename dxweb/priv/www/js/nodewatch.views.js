@@ -121,7 +121,8 @@ ApplicationView = Backbone.View.extend({
         _.bindAll(this, 'render', 'handleConnected', 'refreshData');
         this.model.bind('change:connected', this.handleConnected);
         this.model.bind('websock:data', function(ev) { 
-            console.debug('got data from websocket.....');
+            console.debug('websocket data:');
+            console.debug(ev);
         });
         this.model.view = this;
 

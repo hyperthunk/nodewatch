@@ -49,6 +49,7 @@
 -behavior(gen_server2).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
+-include_lib("fastlog/include/fastlog.hrl").
 -include("dxkit.hrl").
 
 -record(wstate, {
@@ -117,7 +118,7 @@ init(Args) ->
                     timeout=Timeout,
                     options=Args,
                     nodes=ets:new(dx.world.nodes, [{keypos, 2}])},
-    %% discovery takes place out of band as this can block for a while....
+    %% initial discovery takes place out of band as this can block for a while....
     erlang:start_timer(3000, ?MODULE, start),
     {ok, State}.
 
@@ -165,9 +166,10 @@ handle_info({timeout, _TRef, refresh},
     set_timer(Timeout),
     {noreply, State};
 handle_info({'EXIT', _, normal}, State) ->
+    %% a `scan' worker has exited normally
     {noreply, State};
 handle_info(Other, State) ->
-    fastlog:debug(dxkit.world, "Other ~p~n", [Other]),
+    ?DEBUG("Other info event: ~p~n", [Other]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -184,8 +186,7 @@ start_monitor() ->
     net_kernel:monitor_nodes(true, [{node_type, all}, nodedown_reason]).
 
 set_timer(Timeout) ->
-    fastlog:debug(dxkit.world, "Starting refresh timer with a "
-                  "~p ms interval.~n", [Timeout]),
+    ?DEBUG("Starting refresh timer with a ~pms interval.~n", [Timeout]),
     erlang:start_timer(Timeout, ?MODULE, refresh).
 
 reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
@@ -196,7 +197,7 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
         _ ->
             dxkit_net:connect(Node)
     end,
-    fastlog:info(dxkit.world, "Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
+    ?INFO("Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
     ets:insert(Tab, NodeInfo),
     %% TODO: just send the actual node!?
     gen_event:notify(dxkit_event_handler, {world, {NodeStatus, NodeInfo}}),

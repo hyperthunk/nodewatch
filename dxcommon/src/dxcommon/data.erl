@@ -37,6 +37,7 @@
 
 -import(lists).
 -import(dxcommon).
+-import(dxcommon.datetime).
 
 jsonify(Data) when is_record(Data, user) orelse
                    is_record(Data, node_info) orelse
@@ -51,6 +52,8 @@ jsonify(Data=[Rec|_Rest])
                    is_record(Data, connect_time) orelse
                    is_record(Data, event) ->
     lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data);
+jsonify({now, Now}) ->
+    {now, list_to_binary(datetime:rfc1123_datetime(Now))};
 jsonify([]=L) ->
     L;
 jsonify({_K, []}=KV) ->

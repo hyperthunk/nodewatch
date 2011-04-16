@@ -43,7 +43,10 @@
          collectors/0,
          config/2]).
 
+-compile(export_all).
+
 -include_lib("dxcommon/include/dxcommon.hrl").
+-include_lib("fastlog/include/fastlog.hrl").
 
 -record(state, {node}).
 
@@ -65,29 +68,32 @@ tick(State, []) ->
     State;
 tick(State, [[]]) ->
     State;
-tick(#state{node=Node}=State, {ID, Node, Data}) ->
-    handle_events(ID, Node, Data),
+tick(#state{node=Node}=State, [{prfSys, Data}]) ->
+    ?DEBUG("Event Consumer Data: ~p~n", [Data]),
+    dxkit_event_bridge:publish_event({SubscriberKey, Node, {system, Data}}),
+    State;
+tick(State, [Data]) ->
+    tick(State, Data);
+tick(State, Data) ->
+    ?DEBUG("Unexpected Event Consumer Data: ~p~n", [Data]),
     State.
+
 
 %% Internal API
 
-handle_events(ID, Node, Data) ->
-    lists:foreach(fun(Ev) -> handle_event(ID, Node, Ev) end, Data).
-
-handle_event(ID, Node, Event) ->
-    lists:foreach(fun(E) ->
-        dxkit_event_bridge:publish_event({ID, Node, E})
-    end, filter_events(Event)).
-
 %% filter_events(ID, Node, Ev)
 filter_events({prfNet, Data}) ->
-    lists:foldl(fun filter_network_events/2, [], Data);
+    EvData = lists:foldl(fun filter_network_events/2, [], Data),
+    {network, EvData};
 filter_events({prfPrc, Data}) ->
-    lists:foldl(fun filter_process_events/2, [], Data).
+    EvData = lists:foldl(fun filter_process_events/2, [], Data),
+    {process, EvData};
+filter_events({prfSys, Data}) ->
+    {system, Data}.
 
 %% most of the formatting concerns are elsewhere - here we just want
 %% to ensure a bit of sanity in the data structures we're firing off
-%% into the ether, filtering out well known badness and so on. 
+%% into the ether, filtering out well known badness and so on.
 
 filter_process_events({now, Now}, Acc) ->
     %% TODO: consider whether this term is generic enough to be
@@ -124,7 +130,8 @@ filter_network_events(Ev, Acc) -> filter_events(Ev, Acc).
 
 filter_events({_, EvData}, Acc) when is_pid(EvData) -> Acc;
 filter_events({_, EvData}, Acc) when is_port(EvData) -> Acc;
-filter_events({_EvTag, _EvData}=Ev, Acc) -> [Ev|Acc].
+filter_events({_EvTag, _EvData}=Ev, Acc) -> [Ev|Acc];
+filter_events(Other, Acc) -> [Other|Acc].
 
 collector_tag(system) -> prfSys;
 collector_tag(network) -> prfNet;

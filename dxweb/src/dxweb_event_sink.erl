@@ -69,6 +69,8 @@ init(_) ->
 
 %% TODO: Use the event SID if present.....
 
+handle_call(get, _, State) ->
+    {reply, State, State};
 handle_call(Msg, _From, State) ->
     fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
     {noreply, State}.
@@ -77,11 +79,12 @@ handle_cast({sink, {world, {NodeStatus, NodeInfo}}}, State) ->
     Ev = [{event, [{tag, atom_to_binary(NodeStatus, utf8)},
                    {data, dxcommon.data:jsonify(NodeInfo)}]}],
     dxweb_session:send_all(Ev),
+    {noreply, [Ev|State]};
+handle_cast({sink, {SID, _Node, Event}}, State) ->
+    dxweb_session:send(SID, Event),
     {noreply, State};
 handle_cast({sink, Ev}, State) ->
-    ?DEBUG("Sinking Event: ~p~n", [Ev]),
-    %% dxweb_session:send_all(Ev),
-    {noreply, State};
+    {noreply, [Ev|State]};
 handle_cast(start, State) ->
     Res = dxkit:add_event_sink(dxweb_event_handler),
     ?DEBUG("Event sink added: ~p~n", [Res]),

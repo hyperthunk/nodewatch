@@ -46,7 +46,7 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 permanent_subscriber(Handler, Args) ->
-    ?INFO("Starting Handler ~p~n", [Handler]),
+    ?DEBUG("Starting Handler ~p~n", [Handler]),
     supervisor:start_child(?MODULE, [Handler, Args]).
 
 poke_subscribers() ->

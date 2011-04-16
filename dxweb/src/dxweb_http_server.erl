@@ -35,7 +35,6 @@
 %% ===================================================================
 
 start_link(StartArgs) ->
-    io:format("~p StartArgs: ~p~n", [?MODULE, StartArgs]),    
     supervisor:start_link({local, ?MODULE}, ?MODULE, StartArgs).
 
 %% ===================================================================
