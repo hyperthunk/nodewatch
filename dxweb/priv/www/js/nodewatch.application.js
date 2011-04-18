@@ -28,8 +28,11 @@ $(document).ready(function() {
       evaluate:     /#\{(.+?)\}/g
     };
 
+    // TODO: pull out an ApplicationModel and introduce a controler for this...
+
     window._session = new Session({username: $.cookie('nodewatch.user')});
-    window._application =
-        new ApplicationView({el: $('#application'), model: _session});
-    _application.render();
+    window._application = new App({session: _session});
+    window._applicationView =
+        new ApplicationView({el: $('#application'), model: _application});
+    _applicationView.render();
 });

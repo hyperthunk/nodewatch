@@ -119,25 +119,23 @@ ApplicationView = Backbone.View.extend({
     },
     initialize: function() {
         _.bindAll(this, 'render', 'handleConnected', 'refreshData');
-        this.model.bind('change:connected', this.handleConnected);
-        this.model.bind('websock:data', function(ev) { 
+        this.model.get('session').bind('change:connected', this.handleConnected);
+        this.model.get('session').bind('websock:data', function(ev) { 
             console.debug('websocket data:');
             console.debug(ev);
         });
-        this.model.view = this;
 
         var loginPanel = $('#loginPanel');
-        this.loginView = new LoginView({el: loginPanel, model: this.model});
+        this.loginView = new LoginView({el: loginPanel, model: this.model.get('session')});
         this.el.tabs();
 
-        this.nodes = new NodeSet();
         this.nodeListView = new NodeListView({
             el: $('#navbar-node'),
-            collection: this.nodes
+            collection: this.model.get('nodes')
         });
     },
     render: function() {
-        var session = arguments.length >= 1 ? arguments[0] : this.model;
+        var session = arguments.length >= 1 ? arguments[0] : this.model.get('session');
         if (session.get('connected') == true) {
             console.debug("Session Already Established - rendering app.");
             this.loginView.hide();
@@ -159,10 +157,9 @@ ApplicationView = Backbone.View.extend({
     },
     refreshData: function() {
         var username = this.model.get('username');
-        this.nodes.fetch();
-        this.subscriptions = new SubscriptionList([], {
-            url: '/service/subscriptions/' + username
-        });
+        this.model.get('nodes').fetch();
+        var subscriptions = this.model.get('subscriptions');
+        subscriptions.url = '/service/subscriptions/' + username;
     },
     handleConnected: function(_, connected) {
         if (connected) {

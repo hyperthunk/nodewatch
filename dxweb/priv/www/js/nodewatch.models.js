@@ -145,3 +145,12 @@ Session = Backbone.Model.extend({
     }
 });
 
+App = Backbone.Model.extend({
+    debuggerTag: 'App',
+    defaults: {
+        session: undefined,
+        nodes: new NodeSet([]),
+        subscriptions: new SubscriptionList([])
+    }
+});
+
