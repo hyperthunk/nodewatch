@@ -3,10 +3,11 @@
         <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
         <title>Nodewatch Dashboard</title>
         <link type="text/css" href="/static/css/redmond/jquery-ui-1.8.2.custom.css" media="screen" rel="stylesheet" />
-        <link type="text/css" href="/static/development-bundle/demos/demos.css" media="screen" rel="stylesheet" />
+        <link type="text/css" href="/static/css/base.css" media="screen" rel="stylesheet" />
         <link type="text/css" href="/static/css/jquery.notice.css" media="screen" rel="Stylesheet"/>
         <link type="text/css" href="/static/css/jquery.hintbox.css" media="screen" rel="Stylesheet"/>
         <link type="text/css" href="/static/css/jquery.validator.css" media="screen" rel="Stylesheet"/>
+        <link type="text/css" href="/static/css/uniform.default.css" media="screen" rel="stylesheet" charset="utf-8" />
         <script type="text/javascript" src="/static/js/jquery-1.5.1.min.js"></script>
         <script type="text/javascript" src="/static/js/jquery-ui-1.8.11.custom.min.js"></script>
         <script type="text/javascript" src="/static/js/jquery.collapsible.js"></script>
@@ -14,6 +15,7 @@
         <script type="text/javascript" src="/static/js/jquery.notice.js"></script>
         <script type="text/javascript" src="/static/js/jquery.validator.js"></script>
         <script type="text/javascript" src="/static/js/jquery.cookie.js"></script>
+        <script type="text/javascript" src="/static/js/jquery.uniform.js"></script>
         <script type="text/javascript" src="/static/js/underscore.js"></script>
         <script type="text/javascript" src="/static/js/underscore.string.min.js"></script>
         <script type="text/javascript" src="/static/js/pure_min.js"></script>
@@ -63,7 +65,7 @@
                                 <dd><a href="https://github.com/hyperthunk/nodewatch">Source Code</a></dd>
                         </dl>
                     </td>
-                    <td class="normal" >
+                    <td class="normal" id="node-detail">
                         <div class="normal">
                             <!-- see content-pane.template -->
                         </div>
@@ -138,24 +140,38 @@
                 </dd>
             </div>
 
-            <div id="nodeset-template" class="ui-helper-hidden">
+            <div class="node-detail-template">
                 <h4 class="demo-subheader">Nodewatch demo:</h4>
                 <h3 class="demo-header"></h3>
                 <div id="demo-config">
+                    <div id="demo-frame">
+                        <div class="status-frame ui-helper-hidden">
+                            
+                        </div>
+                        <div class="system-frame ui-helper-hidden">
+                            
+                        </div>
+                        <div class="process-frame ui-helper-hidden">
+                            
+                        </div>
+                        <div class="network-frame ui-helper-hidden">
+                            
+                        </div>
+                    </div>
                     <div id="demo-config-menu">
                         <div class="demos-nav">
                             <h4>Monitors/Sensors</h4>
                             <ul>
-                                <li class="demo-config-on">
+                                <li id="status-info" class="demo-config-on">
                                     <a href="#nodes/:node/status">Node Status</a>
                                 </li>
-                                <li>
+                                <li id="system-trace">
                                     <a href="#nodes/:node/sensors/system">System Stats</a>
                                 </li>
-                                <li>
+                                <li id="process-trace">
                                     <a href="#nodes/:node/sensors/process">Process Stats</a>
                                 </li>
-                                <li>
+                                <li id="network-trace">
                                     <a href="#nodes/:node/sensors/network">Network Stats</a>
                                 </li>
                             </ul>
@@ -167,7 +183,6 @@
                         </a>
                     </div>
                 </div>
-                <div id="demo-frame"></div>
             </div>
         </div>
         <div id="loginPanel">

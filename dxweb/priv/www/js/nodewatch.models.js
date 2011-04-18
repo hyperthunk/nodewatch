@@ -22,6 +22,48 @@
 // THE SOFTWARE.
 //
 
+// *static* façade for service calls
+Service = {
+    debuggerTag: 'Service',
+    loadFragment: function(path, dest) {
+        return this.get({url: path,
+                         accept: 'application/html',
+                         dataType: 'html'})
+                   .success(function(html) { dest.html(html); });
+    },
+
+    get: function(opts) {
+        if (typeof(opts) == "string") {
+            return this.http({ url: opts });
+        } else {
+            console.debug('opts:');
+            console.debug(opts);
+            return this.http(opts);
+        }
+    },
+
+    postForm: function(url, data) {
+        return $.ajax({
+            async: false,
+            url: url,
+            type: 'POST',
+            data: data
+        });
+    },
+
+    http: function(opts) {
+        return $.ajax(
+            _.defaults(opts, {
+                async: true,
+                type: 'GET',
+                contentType: 'application/json',
+                crossDomain: true,
+                processData: false,
+                dataType: 'json',
+            }));
+    }
+};
+
 Subscription = Backbone.Model.extend({
     debuggerTag: 'Subscription',
     defaults: {
@@ -71,6 +113,25 @@ NodeSet = Backbone.Collection.extend({
     parse: function(response) {
         return _.map(response,
             function(ni) { return ni.node_info; });
+    }
+});
+
+SystemStatus = Backbone.Model.extend({});
+
+SystemStats = Backbone.Collection.extend({
+    debuggerTag: 'SystemStats',
+    /* NO URL! */
+    model: SystemStatus,
+    initialize: function(args) {
+        _.bindAll(this, 'destroy', 'handleSysEvent', 'render');
+        this.node = args.node;
+        _application.bind('event:system:' + this.node, this.handleSysEvent);
+    },
+    handleSysEvent: function(eventData) {
+        this.add(eventData);
+    },
+    destroy: function() {
+        _application.unbind('event:system:' + this.node);
     }
 });
 
@@ -164,29 +225,29 @@ App = Backbone.Model.extend({
     },
     publishEvent: function(msg) {
         var ev = JSON.parse(msg.data).event;
-        this.trigger('event:' + ev.tag, ev.data);
+        if (ev.tag == 'system') {
+            var info = x.event.data[1];
+            this.trigger('event:system' + info.node, info);
+        } else {
+            this.trigger('event:' + ev.tag, ev.data);
+        }
     },
     activateSubscriptions: function() {
-        var session = this.get('session');
-        var uname = session.get('username');
-        $.ajax({
-            url: '/service/subscriptions/active/' + uname,
-            type: 'PUT',
-            data: "ignored",
-            context: this
-        }).success(function() { this.set({subscriptionStatus: 'ON'}); })
-          .error(function() { console.debug('Fucked!'); });
+        this.toggleSubscriptions('PUT', 'ON');
     },
     deactivateSubscriptions: function() {
+        this.toggleSubscriptions('DELETE', 'OFF');
+    },
+    toggleSubscriptions: function(method, status) {
         var session = this.get('session');
         var uname = session.get('username');
         $.ajax({
             url: '/service/subscriptions/active/' + uname,
-            type: 'DELETE',
+            type: method,
             data: "",
             context: this
-        }).success(function() { this.set({subscriptionStatus: 'OFF'}); })
-          .error(function() { console.debug('Fucked!'); });
+        }).success(function() { this.set({subscriptionStatus: status}); })
+          .error(function() { console.debug('Unable to modify event feed!'); });
     }
 });
 

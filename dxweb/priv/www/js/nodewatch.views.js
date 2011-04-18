@@ -41,7 +41,7 @@ CollectionView = Backbone.View.extend({
             // TODO: consider keeping the templates on the server and $.load them
             var domId = this.el.attr('id');
             var templateClass = '.' + domId + '-template';
-            this.el = 
+            this.el =
                 $(this.el)
                     .html($(templateClass).html())
                     .removeClass(templateClass)
@@ -57,7 +57,7 @@ NodeListView = CollectionView.extend({
     directives: {
         //trigger a loop
         'dd' : {
-            'el<-elements' : { 
+            'el<-elements' : {
                 'a@href+': 'el.id',
                 'a@class+': function(arg) {
                     if (arg.item.status == 'nodedown') {
@@ -119,15 +119,71 @@ NodeListView = CollectionView.extend({
     }
 });
 
-NodeDetailView = Backbone.View.extend({
-    debuggerTag: "NodeDetailView",
+NodeStatusView = Backbone.View.extend({
+    debuggerTag: "NodeStatusView",
+    model: Node,
+    directives: {
+        
+    },
+    initialize: function() {
+        _.bindAll(this, 'render', 'remove');
+    },
+    render: function() {
+        $(this.el).uniform();
+        return this;
+    },
+    remove: function() {
+        this.el.empty();
+        this.collection.destroy();
+    }
+});
+
+SystemStatsView = CollectionView.extend({
+    debuggerTag: "SystemStatsView",
     model: Node,
     initialize: function() {
-        _.bindAll(this, 'render', 'remove', 'handleSysEvent');
-        _application.bind('event:system', this.handleSysEvent);
+        _.bindAll(this, 'render', 'remove');
+        CollectionView.prototype.initialize.call(this, arguments);
     },
-    handleSysEvent: function(eventData) {
-        console.debug(eventData);
+    render: function() {
+        return this;
+    },
+    remove: function() {
+        this.el.empty();
+        this.collection.destroy();
+    }
+});
+
+NodeDetailView = Backbone.View.extend({
+    debuggerTag: 'NodeDetailView',
+    model: Node,
+    directives: {},
+    events: {
+        'click a': 'navbarItemClicked'
+    },
+    initialize: function() {
+        _.bindAll(this, 'render', 'navbarItemClicked');
+    },
+    navbarItemClicked: function(ev) {
+        // TODO: move the item with demo-config-on to here
+        var elem = this.$('.demo-config-on').first();
+        if (elem.size() > 0) {
+            elem.removeClass('demo-config-on');
+        }
+        $(ev.currentTarget).parent().addClass('demo-config-on');
+    },
+    render: function() {
+        // TODO: consider keeping the templates on the server and $.load them
+        var domId = this.el.attr('id');
+        var templateClass = '.' + domId + '-template';
+        this.el =
+            $(this.el)
+                .html($(templateClass).html())
+                .removeClass(templateClass)
+                .attr('id', domId);
+                // .directives(this.directives)
+                // .render({elements: this.collection.toJSON()});
+        return this;
     }
 });
 
@@ -191,7 +247,7 @@ ApplicationView = Backbone.View.extend({
                         'toggleSubscriptions', 'subscriptionStatusChanged');
         this.model.get('session').bind('change:connected', this.handleConnected);
         this.model.bind('change:subscriptionStatus', this.subscriptionStatusChanged);
-        this.model.get('session').bind('websock:data', function(ev) { 
+        this.model.get('session').bind('websock:data', function(ev) {
             console.debug('websocket data:');
             console.debug(ev);
         });
@@ -204,7 +260,7 @@ ApplicationView = Backbone.View.extend({
             el: $('#navbar-node'),
             collection: this.model.get('nodes')
         });
-        
+
         $('#subscriptions button').button({
             icons: { primary: "ui-icon-power" }
         });
@@ -252,10 +308,10 @@ ApplicationView = Backbone.View.extend({
         this.model.get('nodes').fetch();
         var subscriptions = this.model.get('subscriptions');
         subscriptions.url = '/service/subscriptions/' + username;
-        
+
         // TODO: this is completely screwed - get the controller mechanism working properly...
-        
-        var nodes = new NodeController();
+
+        var nodes = new NodeController(_application);
         Backbone.history.start();
     },
     handleConnected: function(_, connected) {
@@ -265,6 +321,7 @@ ApplicationView = Backbone.View.extend({
             Notify.grumble('WebSocket connection broken!\n' +
                            'Attempting to re-establish session....');
             $.cookie("sid", null);
+            // this.el.hide();
             if (!this.loginView.render().login()) {
                 Notify.show("Unable to establish session!");
             }

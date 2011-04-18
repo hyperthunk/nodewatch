@@ -25,14 +25,43 @@
 NodeController = Backbone.Controller.extend({
     routes: {
         'nodes/:node': 'showNode',
-        'nodes/:node/status': 'showStatus'
+        'nodes/:node/status': 'showStatus',
+        'nodes/:node/sensors/system': 'showSystemStats',
+        'nodes/:node/sensors/process': 'showProcessStats',
+        'nodes/:node/sensors/network': 'showNetworkStats'
     },
     initialize: function() {
+        _.bindAll(this, 'showStatus', 'showSystemStats', 
+                        'showNetworkStats', 'showProcessStats');
         this.application = arguments[0];
     },
     showNode: function(node) {
+        var nodeDetail = $('#node-detail');
         var nodes = this.application.get('nodes');
-        
+        var target = nodes.get(node);
+        if (target != undefined) {
+            // TODO: support removing these objects...
+            var primaryView = new NodeDetailView({
+                model: target, 
+                el: nodeDetail
+            });
+            
+            nodeDetail[0].__view = primaryView;
+            primaryView.render();
+            
+            var systemTraceFrame = nodeDetail.find('div.system-frame');
+            var systemStatusMessages = new SystemStats([], {node: target.id});
+            var systemView = new SystemStatsView({
+                model: target,
+                collection: systemStatusMessages,
+                el: systemTraceFrame
+            });
+            systemTraceFrame[0].__view = systemView;
+        }
+    },
+    showSystemStats: function() {
+        var el = $('#node-detail div.system-frame');
+        el[0].__view.render();
     },
     showStatus: function(node) {
         // .find("a[href*='#nodes/:node']")
