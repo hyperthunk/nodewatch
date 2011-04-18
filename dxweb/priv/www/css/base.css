@@ -65,6 +65,10 @@ body {
 	font-size: 1.2em;
 }
 
+.node-state-ok {
+    background-color: greenyellow;
+}
+
 /* Demos */
 
 .demos-nav, .demos-nav dt, .demos-nav dd, .demos-nav ul, .demos-nav li {
@@ -91,7 +95,7 @@ body {
 	margin-top: 1.5em;
 	margin-bottom: 0;
 	padding-left: 8px;
-	padding-bottom:5px;
+	padding-bottom: 5px;
 	line-height: 1.2em;
 	border-bottom: 1px solid #F4F4F4;
 }
@@ -99,7 +103,7 @@ body {
 .demos-nav dd a,
 .demos-nav li a {
 	border-bottom: 1px solid #F4F4F4;
-	display:block;
+	display: block;
 	padding: 4px 3px 4px 8px;
 	font-size: 90%;
 	text-decoration: none;
@@ -108,13 +112,12 @@ body {
 	height:13px;
 }
 
-.demos-nav dd a:hover,
+.demos-nav dd :hover,
 .demos-nav dd a:focus,
 .demos-nav dd a:hover,
 .demos-nav dd a:focus {
 	background: #f3f3f3;
 	color:#000;
-	-moz-border-radius: 5px; -webkit-border-radius: 5px;
 }
 .demos-nav dd a.selected {
 	background: #555;

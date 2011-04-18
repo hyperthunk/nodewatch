@@ -22,4 +22,14 @@
 // THE SOFTWARE.
 //
 
-
+NodeController = Backbone.Controller.extend({
+    routes: {
+        'nodes/:node': 'showNode'
+    },
+    initialize: function() {
+        this.application = arguments[0];
+    },
+    showNode: function(node) {
+        // .get('nodes')....
+    }
+});

@@ -148,9 +148,22 @@ Session = Backbone.Model.extend({
 App = Backbone.Model.extend({
     debuggerTag: 'App',
     defaults: {
-        session: undefined,
+        session: new Session(),
         nodes: new NodeSet([]),
         subscriptions: new SubscriptionList([])
+    },
+    initialize: function() {
+        var session = this.get('session');
+        if (session != undefined) {
+            var self = this;
+            session.bind("websock:data", function(msg) {
+                self.publishEvent(msg);
+            });
+        }
+    },
+    publishEvent: function(msg) {
+        var ev = JSON.parse(msg.data).event;
+        this.trigger('event:' + ev.tag, ev.data);
     }
 });
 

@@ -59,8 +59,51 @@ NodeListView = CollectionView.extend({
         'dd' : {
             'el<-elements' : { 
                 'a@href+': 'el.id',
-                'a': 'el.id'
+                'a@class+': function(arg) {
+                    if (arg.item.status == 'nodedown') {
+                        return 'ui-state-error';
+                    } else {
+                        return '';
+                    }
+                },
+                'a strong': 'el.id',
+                'a span@class': function(arg) {
+                    if (arg.item.status == 'nodeup') {
+                        return '';
+                    } else {
+                        return 'ui-icon ui-icon-alert';
+                    }
+                }
             }
+        }
+    },
+    // NB: this is highly inefficient - we should render individual models...
+    initialize: function() {
+        _(this).bindAll('nodeup', 'nodedown', 'doWithNode');
+        CollectionView.prototype.initialize.call(this, arguments);
+        _application.bind('event:nodeup', this.nodeup);
+        _application.bind('event:nodedown', this.nodedown);
+    },
+    nodeup: function(eventData) {
+        var node = this.collection.get(eventData.node_info.id);
+        if (node != undefined) {
+            var elem = $("dd a[href*='" + node.id + "']", this.el);
+            elem.removeClass('ui-state-error')
+                .addClass('node-state-ok')
+                .find('span')
+                .removeClass('ui-icon')
+                .removeClass('ui-icon-alert');
+        }
+    },
+    nodedown: function(eventData) {
+        var node = this.collection.get(eventData.node_info.id);
+        if (node != undefined) {
+            var elem = $("dd a[href*='" + node.id + "']", this.el);
+            elem.addClass('ui-state-error')
+                .removeClass('node-state-ok')
+                .find('span')
+                .addClass('ui-icon')
+                .addClass('ui-icon-alert');
         }
     }
 });
@@ -160,6 +203,11 @@ ApplicationView = Backbone.View.extend({
         this.model.get('nodes').fetch();
         var subscriptions = this.model.get('subscriptions');
         subscriptions.url = '/service/subscriptions/' + username;
+        
+        // TODO: this is completely screwed - get the controller mechanism working properly...
+        
+        var nodes = new NodeController();
+        Backbone.history.start();
     },
     handleConnected: function(_, connected) {
         if (connected) {
