@@ -3,7 +3,7 @@
         <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
         <title>Nodewatch Dashboard</title>
         <link type="text/css" href="/static/css/redmond/jquery-ui-1.8.2.custom.css" media="screen" rel="stylesheet" />
-        <link type="text/css" href="/static/css/base.css" media="screen" rel="stylesheet" />
+        <link type="text/css" href="/static/development-bundle/demos/demos.css" media="screen" rel="stylesheet" />
         <link type="text/css" href="/static/css/jquery.notice.css" media="screen" rel="Stylesheet"/>
         <link type="text/css" href="/static/css/jquery.hintbox.css" media="screen" rel="Stylesheet"/>
         <link type="text/css" href="/static/css/jquery.validator.css" media="screen" rel="Stylesheet"/>
@@ -15,6 +15,7 @@
         <script type="text/javascript" src="/static/js/jquery.validator.js"></script>
         <script type="text/javascript" src="/static/js/jquery.cookie.js"></script>
         <script type="text/javascript" src="/static/js/underscore.js"></script>
+        <script type="text/javascript" src="/static/js/underscore.string.min.js"></script>
         <script type="text/javascript" src="/static/js/pure_min.js"></script>
         <script type="text/javascript" src="/static/js/backbone-min.js"></script>
         <script type="text/javascript" src="/static/js/nodewatch.helpers.js"></script>
@@ -29,8 +30,19 @@
                 <tr>
                     <td class="left-nav">
                         <dl class="demos-nav">
+                            <dt>Subscription Status</dt>
+                            <dd>
+                                <div id="subscriptions">
+                                    <button class="ui-state-error 
+                                                   ui-corner-all 
+                                                   subscription-button"
+                                            style="width: 100%">
+                                        Click to toggle on/off
+                                    </button>
+                                </div>
+                            </dd>
                             <div id="navbar-node">
-                                <dt>Nodes</dt>
+                                <dt>Nodes</span></dt>
                                 <!-- see #navbar-node.template -->
                             </div>
                             <dt>Dashboards</dt>
@@ -51,9 +63,14 @@
                                 <dd><a href="https://github.com/hyperthunk/nodewatch">Source Code</a></dd>
                         </dl>
                     </td>
+                    <td class="normal" >
+                        <div class="normal">
+                            <!-- see content-pane.template -->
+                        </div>
+                    </td>
                     <!-- We inject content here using some code like:
-                    
-                    $('td.normal div.normal') 
+
+                    $('td.normal div.normal')
                         .empty()
                         .append('<h3 class="demo-header">'+ header +'</h3>')
                         .append('<div id="demo-config"></div>')
@@ -86,8 +103,8 @@
     								$('#demo-config-menu a').each(function(){
     									if (this.href.indexOf(demo + '.html') !== -1) {
     										$(this).parents('ul').find('li').removeClass('demo-config-on');
-    										$(this).parent().addClass('demo-config-on');									
-    										loadDemo(this.href);										
+    										$(this).parent().addClass('demo-config-on');
+    										loadDemo(this.href);
     									}
     								});
     							}
@@ -103,53 +120,54 @@
     					.end()
     				.end()
                     -->
-                    <td class="normal">
-                        <div class="normal">
-                        </div>
-                    </td>
                 </tr>
             </table>
         </div>
         <div id="templates" class="ui-helper-hidden">
-            <!-- 
+            <!--
                 Map the node in the nav bar to the url #/nodes/:id -
-                HINT: we use a + pure directive in the view to do this... 
+                HINT: we use a + pure directive in the view to do this...
             -->
             <div class="navbar-node-template">
                 <dt>Nodes</dt>
-                <dd>
+                <dd class="ui-widget">
                     <a class="node-state-ok" href="#nodes/">
                         <strong></strong>
                         <span style="float: right"></span>
                     </a>
                 </dd>
             </div>
-            
+
             <div id="nodeset-template" class="ui-helper-hidden">
-                <h3 class="demo-header">+ header +</h3>
-                <div id="demo-config"></div>
-                <div id="demo-frame"></div>
-                <div id="demo-config-menu">
-                    <div class="demos-nav">
-                        <h4>Examples</h4>
-                        <ul>
-                            <li class="demo-config-on"><a href="default.html">Default functionality</a></li>
-                            <li><a href="placeholder.html">Drop placeholder</a></li>
-                            <li><a href="connect-lists.html">Connect lists</a></li>
-                            <li><a href="connect-lists-through-tabs.html">Connect lists through tabs</a></li>
-                            <li><a href="empty-lists.html">Handle empty lists</a></li>
-                            <li><a href="items.html">Include / exclude items</a></li>
-                            <li><a href="delay-start.html">Delay start</a></li>
-                            <li><a href="display-grid.html">Display as grid</a></li>		
-                            <li><a href="portlets.html">Portlets</a></li>
-                        </ul>
+                <h4 class="demo-subheader">Nodewatch demo:</h4>
+                <h3 class="demo-header"></h3>
+                <div id="demo-config">
+                    <div id="demo-config-menu">
+                        <div class="demos-nav">
+                            <h4>Monitors/Sensors</h4>
+                            <ul>
+                                <li class="demo-config-on">
+                                    <a href="#nodes/:node/status">Node Status</a>
+                                </li>
+                                <li>
+                                    <a href="#nodes/:node/sensors/system">System Stats</a>
+                                </li>
+                                <li>
+                                    <a href="#nodes/:node/sensors/process">Process Stats</a>
+                                </li>
+                                <li>
+                                    <a href="#nodes/:node/sensors/network">Network Stats</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div id="demo-link">
+                        <a class="demoWindowLink" href="#">
+                            <span class="ui-icon ui-icon-newwin"></span>Open demo in a new window
+                        </a>
                     </div>
                 </div>
-                <div id="demo-link">
-                    <a class="demoWindowLink" href="#">
-                        <span class="ui-icon ui-icon-newwin"></span>Open demo in a new window
-                    </a>
-                </div>
+                <div id="demo-frame"></div>
             </div>
         </div>
         <div id="loginPanel">

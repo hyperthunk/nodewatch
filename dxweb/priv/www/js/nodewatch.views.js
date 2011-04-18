@@ -86,6 +86,11 @@ NodeListView = CollectionView.extend({
     },
     nodeup: function(eventData) {
         var node = this.collection.get(eventData.node_info.id);
+        if (node === undefined) {
+            node = eventData.node_info;
+            this.collection.add([node]);
+        }
+        // TODO: verify the above and remove this check
         if (node != undefined) {
             var elem = $("dd a[href*='" + node.id + "']", this.el);
             elem.removeClass('ui-state-error')
@@ -95,8 +100,14 @@ NodeListView = CollectionView.extend({
                 .removeClass('ui-icon-alert');
         }
     },
+    // TODO: de-duplicate these two functions.
     nodedown: function(eventData) {
         var node = this.collection.get(eventData.node_info.id);
+        if (node === undefined) {
+            node = eventData.node_info;
+            this.collection.add([node]);
+        }
+        // TODO: verify the above and remove this check
         if (node != undefined) {
             var elem = $("dd a[href*='" + node.id + "']", this.el);
             elem.addClass('ui-state-error')
@@ -105,6 +116,18 @@ NodeListView = CollectionView.extend({
                 .addClass('ui-icon')
                 .addClass('ui-icon-alert');
         }
+    }
+});
+
+NodeDetailView = Backbone.View.extend({
+    debuggerTag: "NodeDetailView",
+    model: Node,
+    initialize: function() {
+        _.bindAll(this, 'render', 'remove', 'handleSysEvent');
+        _application.bind('event:system', this.handleSysEvent);
+    },
+    handleSysEvent: function(eventData) {
+        console.debug(eventData);
     }
 });
 
@@ -160,9 +183,14 @@ ApplicationView = Backbone.View.extend({
     templates: {
         subscription: _.template('/service/subscriptions/${username}')
     },
+    events: {
+        'click .subscription-button' : 'toggleSubscriptions'
+    },
     initialize: function() {
-        _.bindAll(this, 'render', 'handleConnected', 'refreshData');
+        _.bindAll(this, 'render', 'handleConnected', 'refreshData',
+                        'toggleSubscriptions', 'subscriptionStatusChanged');
         this.model.get('session').bind('change:connected', this.handleConnected);
+        this.model.bind('change:subscriptionStatus', this.subscriptionStatusChanged);
         this.model.get('session').bind('websock:data', function(ev) { 
             console.debug('websocket data:');
             console.debug(ev);
@@ -176,6 +204,27 @@ ApplicationView = Backbone.View.extend({
             el: $('#navbar-node'),
             collection: this.model.get('nodes')
         });
+        
+        $('#subscriptions button').button({
+            icons: { primary: "ui-icon-power" }
+        });
+    },
+    toggleSubscriptions: function(ev) {
+        var button = $(ev.currentTarget);
+        if (button.hasClass('ui-state-error')) {
+            this.model.activateSubscriptions();
+        } else {
+            this.model.deactivateSubscriptions();
+        }
+    },
+    subscriptionStatusChanged: function(_, status) {
+        var button = this.$('.subscription-button');
+        var txt = button.text();
+        if (button.hasClass('ui-state-error')) {
+            button.removeClass('ui-state-error');
+        } else {
+            button.addClass('ui-state-error');
+        }
     },
     render: function() {
         var session = arguments.length >= 1 ? arguments[0] : this.model.get('session');

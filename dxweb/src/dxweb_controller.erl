@@ -25,7 +25,7 @@
 -module(dxweb_controller).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
--export([get/3]).
+-export([get/3, put/3, delete/3]).
 
 get(Req, _SID, ["nodes"]) ->
     respond(Req, dxkit:which_nodes());
@@ -34,8 +34,18 @@ get(Req, _SID, ["nodes", NodeId]) ->
 get(Req, _SID, ["subscriptions", User]) ->
     respond_with_data(Req, dxdb:find_user_subscriptions(User));
 get(Req, _SID, ["subscriptions", User, NodeId]) ->
-    respond_with_data(Req, 
+    respond_with_data(Req,
         dxdb:find_user_subscriptions_for_node(User, NodeId)).
+
+put(Req, SID, ["subscriptions", "active", User]) ->
+    fastlog:info("Enable (Active) Subscriptions for ~p~n", [User]),
+    dxkit:activate_subscriptions(User, SID),
+    Req:respond(200).
+
+delete(Req, SID, ["subscriptions", "active", User]) ->
+    fastlog:info("Disable (Active) Subscriptions for ~p~n", [User]),
+    dxkit:disable_subscriptions(SID),
+    Req:respond(200).
 
 respond_with_data(Req, []) ->
     not_found(Req);
@@ -43,7 +53,7 @@ respond_with_data(Req, Data) ->
     respond(Req, Data).
 
 respond(Req, Data) ->
-    Req:ok([{"Content-Type", "application/json"}], 
+    Req:ok([{"Content-Type", "application/json"}],
             dxweb_util:marshal([Data])).
 
 not_found(Req) ->

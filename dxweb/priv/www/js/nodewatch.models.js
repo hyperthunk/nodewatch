@@ -150,6 +150,7 @@ App = Backbone.Model.extend({
     defaults: {
         session: new Session(),
         nodes: new NodeSet([]),
+        subscriptionStatus: 'off',
         subscriptions: new SubscriptionList([])
     },
     initialize: function() {
@@ -164,6 +165,28 @@ App = Backbone.Model.extend({
     publishEvent: function(msg) {
         var ev = JSON.parse(msg.data).event;
         this.trigger('event:' + ev.tag, ev.data);
+    },
+    activateSubscriptions: function() {
+        var session = this.get('session');
+        var uname = session.get('username');
+        $.ajax({
+            url: '/service/subscriptions/active/' + uname,
+            type: 'PUT',
+            data: "ignored",
+            context: this
+        }).success(function() { this.set({subscriptionStatus: 'ON'}); })
+          .error(function() { console.debug('Fucked!'); });
+    },
+    deactivateSubscriptions: function() {
+        var session = this.get('session');
+        var uname = session.get('username');
+        $.ajax({
+            url: '/service/subscriptions/active/' + uname,
+            type: 'DELETE',
+            data: "",
+            context: this
+        }).success(function() { this.set({subscriptionStatus: 'OFF'}); })
+          .error(function() { console.debug('Fucked!'); });
     }
 });
 

@@ -24,12 +24,18 @@
 
 NodeController = Backbone.Controller.extend({
     routes: {
-        'nodes/:node': 'showNode'
+        'nodes/:node': 'showNode',
+        'nodes/:node/status': 'showStatus'
     },
     initialize: function() {
         this.application = arguments[0];
     },
     showNode: function(node) {
-        // .get('nodes')....
+        var nodes = this.application.get('nodes');
+        
+    },
+    showStatus: function(node) {
+        // .find("a[href*='#nodes/:node']")
+        
     }
 });

@@ -81,7 +81,9 @@ handle_cast({sink, {world, {NodeStatus, NodeInfo}}}, State) ->
     dxweb_session:send_all(Ev),
     {noreply, [Ev|State]};
 handle_cast({sink, {SID, _Node, Event}}, State) ->
-    dxweb_session:send(SID, Event),
+    Ev = [{event, [{tag, <<"system">>},
+                   {data, dxcommon.data:jsonify(Event)}]}],
+    dxweb_session:send(SID, Ev),
     {noreply, State};
 handle_cast({sink, Ev}, State) ->
     {noreply, [Ev|State]};
