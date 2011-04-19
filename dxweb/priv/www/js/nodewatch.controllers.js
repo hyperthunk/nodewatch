@@ -37,6 +37,7 @@ NodeController = Backbone.Controller.extend({
     },
     showNode: function(node) {
         var nodeDetail = $('#node-detail');
+        // TODO: verify that this actually works.....
         if (nodeDetail[0].__view != undefined) {
             nodeDetail[0].__view.remove();
         }

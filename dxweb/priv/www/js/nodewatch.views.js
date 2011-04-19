@@ -88,6 +88,8 @@ NodeListView = CollectionView.extend({
         if (node === undefined) {
             node = eventData.node_info;
             this.collection.add([node]);
+        } else {
+            node.set(eventData.node_info);
         }
         // TODO: verify the above and remove this check
         if (node != undefined) {
@@ -105,6 +107,8 @@ NodeListView = CollectionView.extend({
         if (node === undefined) {
             node = eventData.node_info;
             this.collection.add([node]);
+        } else {
+            node.set(eventData.node_info);
         }
         // TODO: verify the above and remove this check
         if (node != undefined) {
@@ -125,11 +129,11 @@ NodeStatusView = Backbone.View.extend({
     directives: {
         'dd.node-name': 'id',
         'span.status-text': 'status',
-        'span.ui-icon@class+': function(ctx) {
+        'span.node-icon@class': function(ctx) {
             if (ctx.context.status == 'nodeup') {
-                return ' icon-power-on';
+                return 'node-icon ui-icon icon-power-on';
             } else {
-                return ' icon-power-off';
+                return 'node-icon ui-icon icon-power-off';
             }
         },
         'dd.node-uptime': function(ctx) {
@@ -141,8 +145,15 @@ NodeStatusView = Backbone.View.extend({
     },
     template: undefined,
     initialize: function() {
-        _.bindAll(this, 'render', 'remove', 'hide');
+        _.bindAll(this, 'maybeRender', 'render', 'remove', 'hide');
         this.compileTemplate();
+        _application.bind('event:nodeup', this.maybeRender);
+        _application.bind('event:nodedown', this.maybeRender);
+    },
+    maybeRender: function(eventData) {
+        if (this.model.get('id') == eventData.node_info.id) {
+            this.render();
+        }
     },
     render: function() {
         this.el.removeClass('ui-helper-hidden')
@@ -177,24 +188,24 @@ SystemStatsView = Backbone.View.extend({
         this.template = elem
             .clone().removeClass('ui-helper-hidden')
             .compile({
-            'dd.now': 'now',
-            'dd.atom': 'atom',
-            'dd.atom_used': 'atom_used',
-            'dd.binary': 'binary',
-            'dd.code': 'code',
-            'dd.context_switches': 'context_switches',
-            'dd.cores': 'cores',
-            'dd.system': 'system',
-            'dd.total': 'total',
-            'dd.total_ram': 'total_ram',
-            'dd.ets': 'ets',
-            'dd.gc_reclaimed': 'gc_reclaimed',
-            'dd.gcs': 'gcs',
-            'dd.processes': 'processes',
-            'dd.processes_used': 'processes_used',
-            'dd.procs': 'procs',
-            'dd.reductions': 'reductions',
-            'dd.run_queue': 'run_queue'
+                'dd.now': 'now',
+                'dd.atom': 'atom',
+                'dd.atom_used': 'atom_used',
+                'dd.binary': 'binary',
+                'dd.code': 'code',
+                'dd.context_switches': 'context_switches',
+                'dd.cores': 'cores',
+                'dd.system': 'system',
+                'dd.total': 'total',
+                'dd.total_ram': 'total_ram',
+                'dd.ets': 'ets',
+                'dd.gc_reclaimed': 'gc_reclaimed',
+                'dd.gcs': 'gcs',
+                'dd.processes': 'processes',
+                'dd.processes_used': 'processes_used',
+                'dd.procs': 'procs',
+                'dd.reductions': 'reductions',
+                'dd.run_queue': 'run_queue'
         });
         _application.bind(eventKey, this.handleSysEvent);
     },
@@ -204,7 +215,9 @@ SystemStatsView = Backbone.View.extend({
         this.el.html(this.template(ev));
     },
     remove: function() {
-        // this.collection.destroy();
+        var eventKey = 'event:system:' + this.node;
+        console.debug(this.debuggerTag + " unsubscribing from " + eventKey);
+        _application.unbind(eventKey);
         this.el.empty();
     }
 });
@@ -220,39 +233,20 @@ ProcessStatsView = Backbone.View.extend({
         $('div.process-info-grid')
             .empty()
             .html("<table id='process-info-table' class='process-info-grid' />");
-        /*
-        var elem = this.el.find('#process-info-table');
-        elem.jqGrid({
-            datatype: "local",
-            colNames:['PID','Registered', 'Stack', 'Heap',
-                      'Heap (Total)','Mem','Reductions'],
-            colModel:[
-                {name:'pid', index:'pid', width: 55},
-                {name:'registered_name',index:'registered_name', width: 105},
-                {name:'stack_size',index:'stack_size', width: 55},
-                {name:'heap_size',index:'heap_size', width: 55},
-                {name:'total_heap_size',index:'total_heap_size', width: 85},
-                {name:'memory',index:'memory', width: 75},
-                {name:'reductions',index:'reductions', width: 55}
-            ],
-            caption: this.node + " Process Statistics",
-            edit: false, add: false, del: false
-        });
-        */
         $('table.process-info-grid').first().jqGrid({
             datatype: "local",
             colNames:['PID','Registered', 'Stack', 'Heap','Heap (Total)','Mem','Reductions'],
             colModel:[
                 {name:'pid', index:'pid', width: 55},
-                {name:'registered_name',index:'registered_name', width: 105},
+                {name:'registered_name',index:'registered_name', width: 90},
                 {name:'stack_size',index:'stack_size', width: 55},
                 {name:'heap_size',index:'heap_size', width: 55},
                 {name:'total_heap_size',index:'total_heap_size', width: 85},
                 {name:'memory',index:'memory', width: 75},
                 {name:'reductions',index:'reductions', width: 55}
             ],
-            height: (this.el.parent().height() - 5), 
-            width: (this.el.parent().width() - 5),
+            height: 'auto', 
+            width: (this.el.parent().width() - 15),
             edit: false, add: false, del: false,
             caption: this.node + " Process Statistics"
         });
@@ -285,7 +279,9 @@ ProcessStatsView = Backbone.View.extend({
           });
     },
     remove: function() {
-        _application.unbind('event:process:' + this.node);
+        var eventKey = 'event:process:' + this.node;
+        console.debug(this.debuggerTag + " unsubscribing from " + eventKey);
+        _application.unbind(eventKey);
         this.el.empty();
     }
 });

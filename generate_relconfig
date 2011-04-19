@@ -66,8 +66,10 @@ incl_apps() ->
             proplists:get_value(deps, Conf, [])
         end,
         ["rebar.config"|filelib:wildcard("*/rebar.config")]),
-    Incl = [{app, element(1, D), [{incl_cond, include}]}
-                || D <- lists:flatten(ConfSet)],
+    UniqApps = lists:usort([ element(1, D) || D <- lists:flatten(ConfSet) ]),
+    Incl = [{app, App, [{incl_cond, include}]} 
+                        || App <- UniqApps, 
+                           not lists:member(App, [dxcommon, dxdb, dxkit]) ],
     string:join([io_lib:format("~p~n", [Inc]) || Inc <- Incl], ", ").
 
 write(Dest, Mod, Vars) ->

@@ -8,6 +8,7 @@
          sasl,
          crypto,
          fastlog,
+         dxcommon,
          dxdb,
          dxkit,
          dxweb
