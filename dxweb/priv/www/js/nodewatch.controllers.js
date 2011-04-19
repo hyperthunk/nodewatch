@@ -37,6 +37,9 @@ NodeController = Backbone.Controller.extend({
     },
     showNode: function(node) {
         var nodeDetail = $('#node-detail');
+        if (nodeDetail[0].__view != undefined) {
+            nodeDetail[0].__view.remove();
+        }
         var nodes = this.application.get('nodes');
         var target = nodes.get(node);
         if (target != undefined) {
@@ -47,24 +50,48 @@ NodeController = Backbone.Controller.extend({
             });
             
             nodeDetail[0].__view = primaryView;
+            
+            // NB: prior to rendering the primary content area, none of the 
+            // target DOM nodes for subsequent views exist
             primaryView.render();
             
-            var systemTraceFrame = nodeDetail.find('div.system-frame');
-            var systemStatusMessages = new SystemStats([], {node: target.id});
-            var systemView = new SystemStatsView({
+            var nodeStatusFrame = nodeDetail.find('div.status-frame');
+            var statusView = new NodeStatusView({
                 model: target,
-                collection: systemStatusMessages,
+                el: nodeStatusFrame
+            });
+            statusView.render();
+            
+            var systemTraceFrame = nodeDetail.find('div.system-frame');
+            /*var systemStatusMessages = 
+                new SystemStats([], {node: target.get('id')});*/
+            var systemView = new SystemStatsView({
+                node: target.get('id'),
                 el: systemTraceFrame
             });
             systemTraceFrame[0].__view = systemView;
         }
     },
-    showSystemStats: function() {
-        var el = $('#node-detail div.system-frame');
-        el[0].__view.render();
+    showSystemStats: function(node) {
+        // TODO: ensure the content has loaded
+        var nodeDetail = $('#node-detail');
+        if (nodeDetail[0].__view != undefined) {
+            if (nodeDetail[0].__view.model.get('id') != node) {
+                showNode(node);
+            }
+        }
+        $('#node-detail div.ui-widget').hide();
+        $('#node-detail div.system-frame').show();
     },
     showStatus: function(node) {
-        // .find("a[href*='#nodes/:node']")
-        
+        // TODO: ensure the content has loaded
+        var nodeDetail = $('#node-detail');
+        if (nodeDetail[0].__view != undefined) {
+            if (nodeDetail[0].__view.model.get('id') != node) {
+                showNode(node);
+            }
+        }
+        $('#node-detail div.ui-widget').hide();
+        $('#node-detail div.status-frame').show();
     }
 });

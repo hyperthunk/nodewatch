@@ -122,12 +122,15 @@ SystemStats = Backbone.Collection.extend({
     debuggerTag: 'SystemStats',
     /* NO URL! */
     model: SystemStatus,
-    initialize: function(args) {
+    initialize: function(args, opts) {
         _.bindAll(this, 'destroy', 'handleSysEvent', 'render');
-        this.node = args.node;
-        _application.bind('event:system:' + this.node, this.handleSysEvent);
+        this.node = opts.node;
+        var eventKey = 'event:system:' + this.node;
+        console.debug('subscribing to ' + eventKey);
+        _application.bind(eventKey, this.handleSysEvent);
     },
     handleSysEvent: function(eventData) {
+        console.debug('adding eventData');
         this.add(eventData);
     },
     destroy: function() {
@@ -160,6 +163,8 @@ Session = Backbone.Model.extend({
             this.set({connected: false});
             return false;
         } else {
+            // FIXME: this is totally broken since we moved it around...
+            if ($ === undefined) return false;
             this.set({sessionId: $.cookie("sid")});
             console.debug(_.template('connecting to ${ws}',
                             {ws: this.websocketUrl()}));
@@ -226,8 +231,10 @@ App = Backbone.Model.extend({
     publishEvent: function(msg) {
         var ev = JSON.parse(msg.data).event;
         if (ev.tag == 'system') {
-            var info = x.event.data[1];
-            this.trigger('event:system' + info.node, info);
+            var info = ev.data[1];
+            var key = 'event:system:' + info.node;
+            console.debug('publishing ' + key);
+            this.trigger(key, info);
         } else {
             this.trigger('event:' + ev.tag, ev.data);
         }

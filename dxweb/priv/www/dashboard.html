@@ -15,7 +15,7 @@
         <script type="text/javascript" src="/static/js/jquery.notice.js"></script>
         <script type="text/javascript" src="/static/js/jquery.validator.js"></script>
         <script type="text/javascript" src="/static/js/jquery.cookie.js"></script>
-        <script type="text/javascript" src="/static/js/jquery.uniform.js"></script>
+        <script type="text/javascript" src="/static/js/jquery.uniform.min.js"></script>
         <script type="text/javascript" src="/static/js/underscore.js"></script>
         <script type="text/javascript" src="/static/js/underscore.string.min.js"></script>
         <script type="text/javascript" src="/static/js/pure_min.js"></script>
@@ -145,16 +145,68 @@
                 <h3 class="demo-header"></h3>
                 <div id="demo-config">
                     <div id="demo-frame">
-                        <div class="status-frame ui-helper-hidden">
+                        <div class="status-frame ui-frame-active ui-widget">
+                            <div class="demos-nav">
+                                <dt>Node Name</dt>
+                                <dd class="node-name">nonode@nohost</dd>
+                                <dt><label>Current Status</label></dt>
+                                <dd class="node-status">
+                                    <span class="status-text">NODEUP</span>
+                                    <span class="ui-icon " 
+                                          style="float: right"></span>
+                                </dd>
+                                <dt><label>Uptime (observed - secs)</label></dt>
+                                <dd class="node-uptime">0</dd>
+                                <dt><label>Downtime (observed - secs)</label></dt>
+                                <dd class="node-downtime">0</dd>
+                            </div>
+                        </div>
+                        <div class="system-frame ui-widget ui-helper-hidden">
+                            <div class="demos-nav" style="float: left">
+                                <dt>Last Inspected</dt>
+                                <dd class="now"></dd>
+                                <dt>Atom count</dt>
+                                <dd class="atom"></dd>
+                                <dt>Atoms used</dt>
+                                <dd class="atom_used"></dd>
+                                <dt>Binary</dt>
+                                <dd class="binary"></dd>
+                                <dt>Code</dt>
+                                <dd class="code"></dd>
+                                <dt>Context Switches</dt>
+                                <dd class="context_switches"></dd>
+                                <dt>Number of Cores</dt>
+                                <dd class="cores"></dd>
+                                <dt>System</dt>
+                                <dd class="system"></dd>
+                                <dt>ETS</dt>
+                                <dd class="ets"></dd>
+                            </div>
+                            <div class="demos-nav" style="float: right">
+                                <dt>Total</dt>
+                                <dd class="total"></dd>
+                                <dt>Total (RAM)</dt>
+                                <dd class="total_ram"></dd>
+                                <dt>GC (reclaimed)</dt>
+                                <dd class="gc_reclaimed"></dd>
+                                <dt>GCs</dt>
+                                <dd class="gcs"></dd>
+                                <dt>Processes</dt>
+                                <dd class="processes"></dd>
+                                <dt>Processes Used</dt>
+                                <dd class="processes_used"></dd>
+                                <dt>Procs</dt>
+                                <dd class="procs"></dd>
+                                <dt>Reductions</dt>
+                                <dd class="reductions"></dd>
+                                <dt>Run Queue</dt>
+                                <dd class="run_queue"></dd>
+                            </div>
+                        </div>
+                        <div class="process-frame ui-widget ui-helper-hidden">
                             
                         </div>
-                        <div class="system-frame ui-helper-hidden">
-                            
-                        </div>
-                        <div class="process-frame ui-helper-hidden">
-                            
-                        </div>
-                        <div class="network-frame ui-helper-hidden">
+                        <div class="network-frame ui-widget ui-helper-hidden">
                             
                         </div>
                     </div>

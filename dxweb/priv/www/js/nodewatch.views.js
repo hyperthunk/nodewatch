@@ -32,7 +32,6 @@ CollectionView = Backbone.View.extend({
         this.collection.bind("refresh", this.render);
     },
     render: function() {
-        console.debug("rendering " + this.debuggerTag);
         if (this.directives === undefined) {
             throw {
                 message: "Unable to render"
@@ -123,46 +122,96 @@ NodeStatusView = Backbone.View.extend({
     debuggerTag: "NodeStatusView",
     model: Node,
     directives: {
-        
+        'dd.node-name': 'id',
+        'span.status-text': 'status',
+        'span.ui-icon@class+': function(ctx) {
+            if (ctx.context.status == 'nodeup') {
+                return ' icon-power-on';
+            } else {
+                return ' icon-power-off';
+            }
+        },
+        'dd.node-uptime': function(ctx) {
+            return Math.round(ctx.context.uptime.elapsed / 60);
+        },
+        'dd.node-downtime': function(ctx) {
+            return Math.round(ctx.context.downtime.elapsed / 60);
+        },
     },
+    template: undefined,
     initialize: function() {
-        _.bindAll(this, 'render', 'remove');
+        _.bindAll(this, 'render', 'remove', 'hide');
+        this.compileTemplate();
     },
     render: function() {
-        $(this.el).uniform();
+        this.el.removeClass('ui-helper-hidden')
+               .addClass('ui-frame-active')
+               .html(this.template(this.model.toJSON()))
+               .show();
         return this;
+    },
+    hide: function() {
+        this.el.removeClass('ui-frame-active')
+               .addClass('ui-helper-hidden');
     },
     remove: function() {
         this.el.empty();
-        this.collection.destroy();
+    },
+    compileTemplate: function() {
+        this.template = this.el.compile(this.directives);
     }
 });
 
-SystemStatsView = CollectionView.extend({
+SystemStatsView = Backbone.View.extend({
     debuggerTag: "SystemStatsView",
-    model: Node,
-    initialize: function() {
-        _.bindAll(this, 'render', 'remove');
-        CollectionView.prototype.initialize.call(this, arguments);
+    initialize: function(opts) {
+        _.bindAll(this, 'handleSysEvent');
+        this.node = opts.node;
+        var eventKey = 'event:system:' + this.node;
+        console.debug('subscribing to ' + eventKey);
+        this.template = $(this.el)
+            .clone().removeClass('ui-helper-hidden')
+            .compile({
+            'dd.now': 'now',
+            'dd.atom': 'atom',
+            'dd.atom_used': 'atom_used',
+            'dd.binary': 'binary',
+            'dd.code': 'code',
+            'dd.context_switches': 'context_switches',
+            'dd.cores': 'cores',
+            'dd.system': 'system',
+            'dd.total': 'total',
+            'dd.total_ram': 'total_ram',
+            'dd.ets': 'ets',
+            'dd.gc_reclaimed': 'gc_reclaimed',
+            'dd.gcs': 'gcs',
+            'dd.processes': 'processes',
+            'dd.processes_used': 'processes_used',
+            'dd.procs': 'procs',
+            'dd.reductions': 'reductions',
+            'dd.run_queue': 'run_queue'
+        });
+        _application.bind(eventKey, this.handleSysEvent);
     },
-    render: function() {
-        return this;
+    handleSysEvent: function(ev) {
+        console.debug("rendering " + ev.now);
+        // console.debug(ev);
+        this.el.html(this.template(ev));
     },
     remove: function() {
+        // this.collection.destroy();
         this.el.empty();
-        this.collection.destroy();
     }
 });
 
 NodeDetailView = Backbone.View.extend({
     debuggerTag: 'NodeDetailView',
     model: Node,
-    directives: {},
     events: {
         'click a': 'navbarItemClicked'
     },
     initialize: function() {
-        _.bindAll(this, 'render', 'navbarItemClicked');
+        _.bindAll(this, 'render', 'remove', 'navbarItemClicked');
     },
     navbarItemClicked: function(ev) {
         // TODO: move the item with demo-config-on to here
@@ -170,20 +219,44 @@ NodeDetailView = Backbone.View.extend({
         if (elem.size() > 0) {
             elem.removeClass('demo-config-on');
         }
+        // ev points to the anchor that was clicked,
+        // but we are going to style the outer <li/>
         $(ev.currentTarget).parent().addClass('demo-config-on');
+
+        // we need to clear the current (active) marker
+        // *but* the next view will re-add the marker itself
+        this.$('.ui-frame-active')
+            .first()
+            .removeClass('ui-frame-active')
+            .hide();
     },
     render: function() {
-        // TODO: consider keeping the templates on the server and $.load them
+
+        // TODO: this is horribly wasteful - we should cache the view somehow....
+
+        this.el = $(this.el);
         var domId = this.el.attr('id');
         var templateClass = '.' + domId + '-template';
-        this.el =
-            $(this.el)
-                .html($(templateClass).html())
-                .removeClass(templateClass)
-                .attr('id', domId);
-                // .directives(this.directives)
-                // .render({elements: this.collection.toJSON()});
+        this.el.empty()
+               .html($(templateClass).html())
+               .removeClass(templateClass)
+               .attr('id', domId);
+        var nodeId = this.model.get('id');
+        this.el.find("a[href*='#nodes/:node']").each(function() {
+            var el = $(this);
+            el.attr('href', el.attr('href').replace(':node', nodeId));
+        });
+        // this.el.html(render({elements: this.model.toJSON()}));
         return this;
+    },
+    remove: function() {
+        // TODO: find a better place for this to live....
+        this.$('demo-frame div').each(function() {
+            if (this.__view != undefined) {
+                console.debug("removing sub-view");
+                this.__view.remove();
+            }
+        });
     }
 });
 
@@ -195,9 +268,6 @@ LoginView = Backbone.View.extend({
     },
     initialize: function() {
         _.bindAll(this, 'render', 'hide', 'login');
-        // this.model.bind('change:connected', this.toggle);
-        // this certainly isn't the only view for a sesion.
-        // this.model.view = this;
         Service.loadFragment('static/login.html', this.el);
     },
     render: function() {

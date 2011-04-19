@@ -67,6 +67,27 @@ body {
 
 /* Demos */
 
+.ui-frame-active {
+    width: 100%;
+}
+
+.ui-icon.icon-power-on {
+    background-image: url(/static/images/ok.png);
+}
+
+.ui-icon.icon-power-off {
+    background-image: url(/static/images/stop.png);
+}
+
+.padded-form-content {
+    padding: 30px;
+    border-spacing: 10px;  /* doesn't work in IE < 8 */
+}
+
+.padded-form-content tr {
+    
+}
+
 .demos-nav, .demos-nav dt, .demos-nav dd, .demos-nav ul, .demos-nav li {
 	margin: 0;
 	padding: 0
@@ -122,7 +143,6 @@ body {
 	-moz-border-radius: 5px; -webkit-border-radius: 5px;
 }
 
-
 /* new styles for demo pages, added by Filament 12.29.08
 eventually we should convert the font sizes to ems -- using px for now to minimize style conflicts
 */
@@ -136,10 +156,10 @@ eventually we should convert the font sizes to ems -- using px for now to minimi
 
 #demo-config { padding:20px 0 0; }
 
-#demo-frame { float:left; width:80%; height:380px; border:1px solid #ddd; overflow: auto; position: relative; }
+#demo-frame { float:left; width:75%; height:380px; border:1px solid #ddd; overflow: auto; position: relative; }
 #demo-frame h3, #demo-frame h4 { padding: 0; font-weight: bold; font-size: 1em; }
 
-#demo-config-menu { float:right; width:180px;  }
+#demo-config-menu { float:right; /*width:180px;*/  }
 #demo-config-menu h4 { font-size:13px; color:#666; font-weight:normal; border:0; padding-left:18px; }
 
 #demo-config-menu ul { list-style: none; padding: 0; margin: 0; }
