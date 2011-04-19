@@ -80,8 +80,9 @@ handle_cast({sink, {world, {NodeStatus, NodeInfo}}}, State) ->
                    {data, dxcommon.data:jsonify(NodeInfo)}]}],
     dxweb_session:send_all(Ev),
     {noreply, [Ev|State]};
-handle_cast({sink, {SID, _Node, Event}}, State) ->
-    Ev = [{event, [{tag, <<"system">>},
+handle_cast({sink, {SID, _Node, {Tag,_}=Event}}, State) ->
+    ?INFO("SINK: ~p~n", [Tag]),
+    Ev = [{event, [{tag, atom_to_binary(Tag, utf8)},
                    {data, dxcommon.data:jsonify(Event)}]}],
     dxweb_session:send(SID, Ev),
     {noreply, State};

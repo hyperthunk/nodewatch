@@ -113,7 +113,8 @@ NodeListView = CollectionView.extend({
                 .removeClass('node-state-ok')
                 .find('span')
                 .addClass('ui-icon')
-                .addClass('ui-icon-alert');
+                .addClass('ui-icon-alert')
+                .parent().effect("pulsate", { times: 3 }, 1000);
         }
     }
 });
@@ -162,6 +163,9 @@ NodeStatusView = Backbone.View.extend({
     }
 });
 
+// NB: SystemStatsView and ProcessStatsView do not use a Backbone.Model, but rather
+// map JSON directly in their render method - this is for efficiency reasons.
+
 SystemStatsView = Backbone.View.extend({
     debuggerTag: "SystemStatsView",
     initialize: function(opts) {
@@ -169,7 +173,8 @@ SystemStatsView = Backbone.View.extend({
         this.node = opts.node;
         var eventKey = 'event:system:' + this.node;
         console.debug('subscribing to ' + eventKey);
-        this.template = $(this.el)
+        var elem = $(this.el);
+        this.template = elem
             .clone().removeClass('ui-helper-hidden')
             .compile({
             'dd.now': 'now',
@@ -200,6 +205,87 @@ SystemStatsView = Backbone.View.extend({
     },
     remove: function() {
         // this.collection.destroy();
+        this.el.empty();
+    }
+});
+
+ProcessStatsView = Backbone.View.extend({
+    debuggerTag: "ProcessStatsView",
+    initialize: function(opts) {
+        _.bindAll(this, 'handleSysEvent', 'render', 'remove');
+
+        this.node = opts.node;
+        var eventKey = 'event:process:' + this.node;
+        
+        $('div.process-info-grid')
+            .empty()
+            .html("<table id='process-info-table' class='process-info-grid' />");
+        /*
+        var elem = this.el.find('#process-info-table');
+        elem.jqGrid({
+            datatype: "local",
+            colNames:['PID','Registered', 'Stack', 'Heap',
+                      'Heap (Total)','Mem','Reductions'],
+            colModel:[
+                {name:'pid', index:'pid', width: 55},
+                {name:'registered_name',index:'registered_name', width: 105},
+                {name:'stack_size',index:'stack_size', width: 55},
+                {name:'heap_size',index:'heap_size', width: 55},
+                {name:'total_heap_size',index:'total_heap_size', width: 85},
+                {name:'memory',index:'memory', width: 75},
+                {name:'reductions',index:'reductions', width: 55}
+            ],
+            caption: this.node + " Process Statistics",
+            edit: false, add: false, del: false
+        });
+        */
+        $('table.process-info-grid').first().jqGrid({
+            datatype: "local",
+            colNames:['PID','Registered', 'Stack', 'Heap','Heap (Total)','Mem','Reductions'],
+            colModel:[
+                {name:'pid', index:'pid', width: 55},
+                {name:'registered_name',index:'registered_name', width: 105},
+                {name:'stack_size',index:'stack_size', width: 55},
+                {name:'heap_size',index:'heap_size', width: 55},
+                {name:'total_heap_size',index:'total_heap_size', width: 85},
+                {name:'memory',index:'memory', width: 75},
+                {name:'reductions',index:'reductions', width: 55}
+            ],
+            height: (this.el.parent().height() - 5), 
+            width: (this.el.parent().width() - 5),
+            edit: false, add: false, del: false,
+            caption: this.node + " Process Statistics"
+        });
+        
+        console.debug('subscribing to ' + eventKey);
+        
+        // should we limit event handling rates to this view?
+        // _.throttle(this.handleSysEvent, 500));
+        _application.bind(eventKey, this.handleSysEvent);
+    },
+    render: function(node) {
+        $('#gbox_process-info-table').css({display: 'inline-block'});
+        this.el.show();
+    },
+    handleSysEvent: function(ev) {
+        console.debug("rendering events!");
+        // console.debug(ev);
+        var stats = _.map(_.keys(ev.info), function(k) {
+            return _.extend(ev.info[k], {pid: k});
+        });
+        var el = this.$('table.process-info-grid');
+        _.map(stats,
+          function(i) {
+              var rowid = i.pid;
+              if (el.jqGrid('getInd', rowid)) {
+                  el.jqGrid('setRowData', rowid, i);
+              } else {
+                  el.jqGrid('addRowData', rowid, i);
+              }
+          });
+    },
+    remove: function() {
+        _application.unbind('event:process:' + this.node);
         this.el.empty();
     }
 });

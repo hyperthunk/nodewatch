@@ -99,6 +99,15 @@ body {
 	font-size: 0.9em;
 }
 
+.process-info-grid {
+    width: 100%;
+    font-size: 0.8em;
+}
+
+.process-info-grid div.ui-jqgrid-titlebar {
+    font-size: 1.0em;
+}
+
 .demos-nav dt,
 .demos-nav h4 {
 	margin: 0;

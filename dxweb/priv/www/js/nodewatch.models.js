@@ -235,6 +235,11 @@ App = Backbone.Model.extend({
             var key = 'event:system:' + info.node;
             console.debug('publishing ' + key);
             this.trigger(key, info);
+        } else if (ev.tag == 'process') {
+            var obj = ev.data[1];
+            var key = "event:process:" + obj.node;
+            console.debug('publishing ' + key);
+            this.trigger(key, obj);
         } else {
             this.trigger('event:' + ev.tag, ev.data);
         }

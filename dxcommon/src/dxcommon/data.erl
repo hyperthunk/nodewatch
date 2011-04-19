@@ -36,6 +36,7 @@
 -compile(export_all).
 
 -import(lists).
+-import(io_lib).
 -import(dxcommon).
 -import(dxcommon.datetime).
 
@@ -54,6 +55,19 @@ jsonify(Data=[Rec|_Rest])
     lists:map(fun(E) -> [dxcommon:record_to_proplist(E)] end, Data);
 jsonify({now, Now}) when is_tuple(Now) ->
     {now, list_to_binary(datetime:rfc1123_datetime(Now))};
+jsonify({info, Data}) ->
+    {info, lists:map(fun(D) -> jsonify(D) end, Data)};
+jsonify({dreds, _}) ->
+    {dreds, []};
+jsonify({dmem, _}) ->
+    {dmem, []};
+jsonify({mem, _}) ->
+    {mem, []};
+jsonify({last_calls, _}) ->
+    {last_calls, []};
+jsonify({P, Data}) when is_pid(P) ->
+    [Pid] = io_lib:format("~p", [P]),
+    {list_to_binary(Pid), lists:map(fun(D) -> jsonify(D) end, Data)};
 jsonify([]=L) ->
     L;
 jsonify({_K, []}=KV) ->

@@ -70,6 +70,13 @@ NodeController = Backbone.Controller.extend({
                 el: systemTraceFrame
             });
             systemTraceFrame[0].__view = systemView;
+            
+            var processTraceFrame = nodeDetail.find('div.process-frame');
+            var processView = new ProcessStatsView({
+                node: target.get('id'),
+                el: processTraceFrame
+            });
+            processTraceFrame[0].__view = processView;
         }
     },
     showSystemStats: function(node) {
@@ -82,6 +89,17 @@ NodeController = Backbone.Controller.extend({
         }
         $('#node-detail div.ui-widget').hide();
         $('#node-detail div.system-frame').show();
+    },
+    showProcessStats: function(node) {
+        $('#node-detail div.ui-widget').hide();
+        var nodeDetail = $('#node-detail');
+        if (nodeDetail[0].__view != undefined) {
+            if (nodeDetail[0].__view.model.get('id') != node) {
+                this.showNode(node);
+            } else {
+                nodeDetail.find('div.process-frame')[0].__view.render();
+            }
+        }
     },
     showStatus: function(node) {
         // TODO: ensure the content has loaded

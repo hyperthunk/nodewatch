@@ -69,11 +69,16 @@ tick(State, []) ->
 tick(State, [[]]) ->
     State;
 tick(#state{node=Node}=State, [{prfSys, Data}]) ->
-    ?DEBUG("Event Consumer Data: ~p~n", [Data]),
+    ?DEBUG("System Data: ~p~n", [Data]),
     dxkit_event_bridge:publish_event({SubscriberKey, Node, {system, Data}}),
     State;
-tick(State, [Data]) ->
-    tick(State, Data);
+tick(#state{node=Node}=State, [{prfPrc, Data}]) ->
+    ?DEBUG("Process Data: ~p~n", [Data]),
+    dxkit_event_bridge:publish_event({SubscriberKey, Node, {process, Data}}),
+    State;
+tick(State, [{_, _}|_]=Events) ->
+    lists:map(fun(Ev) -> tick(State, [Ev]) end, Events),
+    State;
 tick(State, Data) ->
     ?DEBUG("Unexpected Event Consumer Data: ~p~n", [Data]),
     State.
