@@ -22,7 +22,7 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
--module(dxcommon.event).
+-module(dx_event).
 -author('Tim Watson <watson.timothy@gmail.com>').
 -compile({parse_transform, exprecs}).
 

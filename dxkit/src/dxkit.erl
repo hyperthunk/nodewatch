@@ -75,7 +75,8 @@ add_event_sink(Mod, Args) ->
 %% for use whne you're running nodewatch from the start-dev shell script.
 %%
 start_dev() ->
+    [_H|RevPath] = lists:reverse(filename:split(code:lib_dir(dxcommon))),
+    Conf = filename:join(lists:reverse(["testdb.conf", "inttest"] ++ RevPath)),
     appstart:start(dxkit),
-    fastlog:debug("Loading in ~p~n", [file:get_cwd()]),
-    {atomic, ok} = mnesia:load_textfile("../inttest/testdb.conf"),
+    {atomic, ok} = mnesia:load_textfile(Conf),
     ok.

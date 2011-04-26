@@ -264,7 +264,8 @@ ProcessStatsView = Backbone.View.extend({
     handleSysEvent: function(ev) {
         console.debug("rendering events!");
         // console.debug(ev);
-        var stats = _.map(_.keys(ev.info), function(k) {
+        var pids = _.keys(ev.info);
+        var stats = _.map(pids, function(k) {
             return _.extend(ev.info[k], {pid: k});
         });
         var el = this.$('table.process-info-grid');
@@ -277,6 +278,32 @@ ProcessStatsView = Backbone.View.extend({
                   el.jqGrid('addRowData', rowid, i);
               }
           });
+          
+        /*
+        var reds = _.pluck(_.map(pids, 
+            function(pid) { return ev.info[pid]; }), 'reductions');
+        var zipped = _.zip(pids, reds);
+        var values = {};
+        _.map(, function(pair) {
+            var series = 'serie' + _.indexOf(pids, pair[0]);
+            values[series] = [pair[1]];
+            return x;
+        });
+        var definition = _.foldl(pids, 
+            function(def, pid) {
+                var series = 'serie' + _.indexOf(pids, pid);
+                def.labels.push(pid);
+                def.tooltips[series] = [pid + '::reductions'];
+                def.values[series] = [ev.info[pid].reductions];
+                return def;
+            }, {
+            tooltips: {}, values: {}, labels: [], 
+            type: "line", barMargins : 10, style: {position: 'relative'},
+            defaultSeries : {type: "bar"}, defaultAxis: {labels: true}
+        });
+        
+        this.$('.process-info-chart').chart(definition);
+        */
     },
     remove: function() {
         var eventKey = 'event:process:' + this.node;

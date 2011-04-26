@@ -8,9 +8,9 @@ case "$NODEWATCH_SETENV" in
         echo "./setenv.sh has already been run (ignoring)."
         ;;
     *)
-        export PWD=`pwd`
-        export ERL_LIBS="$PWD:$ERL_LIBS"
-        export DXKIT_NET_CONF="$PWD/release/files"
+        export NODEWATCH=`pwd`
+        export ERL_LIBS="$NODEWATCH:$ERL_LIBS"
+        export DXKIT_NET_CONF="$NODEWATCH/release/files"
         export NODEWATCH_SETENV="true"
         echo "Environment Setup Complete."
 esac

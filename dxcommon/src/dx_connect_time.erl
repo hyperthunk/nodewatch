@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Tools: World Server Test Suite
+%% Erlang System Monitoring Commons: Library API
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,39 +22,23 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-
-%% module annotations
--module(world_server_SUITE).
+-module(dx_connect_time).
 -author('Tim Watson <watson.timothy@gmail.com>').
+-compile({parse_transform, exprecs}).
 
-%% compilation directives
--compile(export_all).
+-include("dxcommon.hrl").
 
--include_lib("common_test/include/ct.hrl").
--include_lib("eunit/include/eunit.hrl").
+-export([new/0, sync/1]).
+-export_records([connect_time]).
 
--define(SLAVE, esmt_test_slave).
--define(PORT_HINT, 10100).
+new() ->
+    %% shortcut
+    GSecs = dx_utils:snapshot(),
+    #connect_time{snapshot=GSecs}.
 
-%% public api exports
-
-%% automatically registers all exported functions as test cases
-all() ->
-    [ FName || {FName, _} <- lists:filter(
-    fun ({module_info,_}) -> false ;
-        ({all,_}) -> false ;
-        ({init_per_suite,1}) -> false ;
-        ({end_per_suite,1}) -> false ;
-        ({_,1}) -> true ;
-        ({_,_}) -> false
-    end,
-    ?MODULE:module_info(exports))].
-
-%% sets up automated trace configuration (see test_config.ctc for details)
-init_per_testcase(TestCase, Config) ->
-    {ok, Node} = slave:start(net_adm:localhost(), TestCase),
-    TC = {TestCase,[{slave, esmt_net:force_connect(Node)}]},
-    [TC|Config].
-
-nodedown_messages_should_get_through(Config) ->
-    ok.
+sync(#connect_time{elapsed=Elapsed,
+                   snapshot=ThenGS}=CT) ->
+    NowGS = dx_utils:snapshot(),
+    CT#connect_time{elapsed=(Elapsed + (NowGS - ThenGS)),
+                    snapshot=NowGS}.
+    

@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Commons
+%% Erlang System Monitoring Commons: Library API
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,29 +22,10 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc
-%%
-%% -----------------------------------------------------------------------------
--module(dxcommon.string).
+-module(dx_subscription).
 -author('Tim Watson <watson.timothy@gmail.com>').
+-compile({parse_transform, exprecs}).
+
 -include("dxcommon.hrl").
 
--compile(export_all).
-
--import(lists).
--import(string).
-
-rejoin(Parts, With) ->
-    lists:foldl(
-        fun(E, Acc) ->
-            case Acc of
-                [] ->
-                    E;
-                _ ->
-                    string:join([E, Acc], With)
-            end
-        end, "", lists:reverse(Parts)).
+-export_records([subscription]).

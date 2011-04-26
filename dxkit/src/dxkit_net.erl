@@ -104,7 +104,7 @@ prim_ip(Host) ->
 
 ip_string(Addr) when is_tuple(Addr) ->
     %% again, only useful for IPv4
-    dxcommon.string:rejoin(tuple_to_list(Addr), ".").
+    dx_utils:rejoin(tuple_to_list(Addr), ".").
 
 get_blacklist() ->
     gen_server:call(?MODULE, get_blacklist).
@@ -119,8 +119,8 @@ clear_blacklist() ->
                    (Node::#node_info{}) -> #node_info{}).
 connect(Node) when is_atom(Node) ->
     connect(#node_info{id=Node,
-                       uptime='dxcommon.connect_time':new(),
-                       downtime='dxcommon.connect_time':new()});
+                       uptime=dx_connect_time:new(),
+                       downtime=dx_connect_time:new()});
 connect(#node_info{id=Name, status=PrevStatus}=Node) ->
     Status = case net_kernel:connect_node(Name) of
         ignored -> unknown;
@@ -137,7 +137,7 @@ sync(nodedown, #node_info{status=nodeup, uptime=Up, downtime=Down}=Node) ->
     Node#node_info{uptime=Up, downtime=sync(Down)};
 sync(Then, #node_info{status=Now, uptime=Up, 
                       downtime=Down}=Node) when Then == Now ->
-    Timestamp = dxcommon.datetime:snapshot(),
+    Timestamp = dx_utils:snapshot(),
     {Uptime, Downtime} = case Then of
         nodeup ->
             {sync(Up), Down#connect_time{snapshot=Timestamp}};
@@ -152,7 +152,7 @@ sync(unknown, Node) ->
     Node.
 
 sync(CT) ->
-    'dxcommon.connect_time':sync(CT).
+    dx_connect_time:sync(CT).
 
 %%
 %% @doc Force check the connection to Node.
@@ -346,7 +346,7 @@ find_entries(Host, Conf) ->
                                         read_conf(domains, Conf));
         [HostPart|Rest] ->
             %% fully qualified host entries get checked only once
-            DomainPart = dxcommon.string:rejoin(Rest, "."),
+            DomainPart = dx_utils:rejoin(Rest, "."),
             find_host_entries(DomainPart, {HostPart, Conf, sets:new()})
     end,
     sets:to_list(Found).

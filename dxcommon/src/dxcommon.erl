@@ -55,9 +55,9 @@ enforce_fields({Name, Value}=Pair) when is_tuple(Value) ->
             %% even if this isn't a record, we want a nested proplist
             case Value of
                 {_, _}=KVP ->
-                    {Name, [dxcommon.data:jsonify(KVP)]};
+                    {Name, [dx_json:jsonify(KVP)]};
                 _ ->
-                    dxcommon.data:jsonify(Pair)
+                    dx_json:jsonify(Pair)
             end;
         {Type, Mod} ->
             case record_to_proplist(Type, Mod, Value) of
@@ -69,7 +69,7 @@ enforce_fields({Name, Value}=Pair) when is_tuple(Value) ->
             end
     end;
 enforce_fields({_Name, _Value}=Pair) ->
-    dxcommon.data:jsonify(Pair).
+    dx_json:jsonify(Pair).
 
 %% TODO: deprecate this....
 new_r(Type, Values) ->
@@ -115,41 +115,28 @@ type_members(Type, Mod) ->
 
 %% TODO: generate this boilerplate away....
 
-type(event) ->
-    event();
-type(node_info) ->
-    node_info();
-type(subscription) ->
-    subscription();
-type(user) ->
-    user();
-type(connect_time) ->
-    connect_time();
-type(Other) ->
-    case lists:filter(fun(Mod) -> Mod:'#is_record-'(Other) end,
-                    [dxcommon.connect_time,
-                     dxcommon.node_info,
-                     dxcommon.subscription,
-                     dxcommon.user,
-                     dxcommon.event]) of
-        [TypeMod] ->
-            [_,B] = string:tokens(atom_to_list(TypeMod), "."),
-            {list_to_atom(B), TypeMod};
-        [] ->
-            {error, {unknown_type, Other}}
+type(R) when is_tuple(R) ->
+    case type(element(1, R)) of
+        {error, _} ->
+            {error, {unknown_type, R}};
+        {T, Mod} ->
+            get_type(Mod, T, R)
+    end;
+type(T) when is_atom(T) ->
+    Mod = list_to_atom("dx_" ++ atom_to_list(T)),
+    case code:ensure_loaded(Mod) of
+        {error, embedded} ->
+            {T, Mod};
+        {error, _} ->
+            {error, {unknown_type, T}};
+        {module, _} ->
+            {T, Mod}
     end.
 
-event() ->
-    {event, 'dxcommon.event'}.
-
-connect_time() ->
-    {connect_time, 'dxcommon.connect_time'}.
-
-node_info() ->
-    {node_info, 'dxcommon.node_info'}.
-
-subscription() ->
-    {subscription, 'dxcommon.subscription'}.
-
-user() ->
-    {user, 'dxcommon.user'}.
+get_type(Mod, T, R) ->
+    case Mod:'#is_record-'(R) of
+        true ->
+            {T, Mod};
+        false ->
+            {error, {unknown_type, T}}
+    end.

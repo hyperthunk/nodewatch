@@ -29,16 +29,11 @@
 %% @doc
 %%
 %% -----------------------------------------------------------------------------
--module(dxcommon.data).
+-module(dx_json).
 -author('Tim Watson <watson.timothy@gmail.com>').
 -include("dxcommon.hrl").
 
 -compile(export_all).
-
--import(lists).
--import(io_lib).
--import(dxcommon).
--import(dxcommon.datetime).
 
 jsonify(Data) when is_record(Data, user) orelse
                    is_record(Data, node_info) orelse

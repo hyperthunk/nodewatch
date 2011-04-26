@@ -22,10 +22,11 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
--module(dxcommon.subscription).
+-module(dx_node_info).
 -author('Tim Watson <watson.timothy@gmail.com>').
 -compile({parse_transform, exprecs}).
 
 -include("dxcommon.hrl").
 
--export_records([subscription]).
+-export_records([node_info]).
+

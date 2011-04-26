@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Erlang System Monitoring Commons
+%% Erlang System Monitoring Commons: Library API
 %%
 %% Copyright (c) 2010 Tim Watson (watson.timothy@gmail.com)
 %%
@@ -22,27 +22,10 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -----------------------------------------------------------------------------
-%% @author Tim Watson [http://hyperthunk.wordpress.com]
-%% @copyright (c) Tim Watson, 2010
-%% @since: March 2010
-%%
-%% @doc
-%%
-%% -----------------------------------------------------------------------------
--module(dxcommon.datetime).
+-module(dx_user).
 -author('Tim Watson <watson.timothy@gmail.com>').
+-compile({parse_transform, exprecs}).
+
 -include("dxcommon.hrl").
 
--compile(export_all).
-
--import(httpd_util).
--import(calendar).
-
-rfc1123_datetime(Now={_,_,_}) ->
-    rfc1123_datetime(calendar:now_to_local_time(Now));
-rfc1123_datetime(DateTime={{_,_,_}, {_,_,_}}) ->
-    httpd_util:rfc1123_date(DateTime).
-
-snapshot() ->
-    Now = calendar:now_to_universal_time(erlang:now()),
-    calendar:datetime_to_gregorian_seconds(Now).
+-export_records([user]).
