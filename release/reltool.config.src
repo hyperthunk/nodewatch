@@ -7,6 +7,7 @@
          stdlib,
          sasl,
          crypto,
+         appstart,
          fastlog,
          dxcommon,
          dxdb,
@@ -30,7 +31,7 @@
 
 {target_dir, "nodewatch"}.
 
-%%{overlay_vars, []}.
+{overlay_vars, "files/overlay.vars"}.
 
 {overlay, [
    {mkdir, "log/sasl"},
@@ -40,7 +41,7 @@
    {copy, "files/nodetool", "erts-{{erts_vsn}}/bin/nodetool"},
    {copy, "files/nodewatch", "bin/nodewatch"},
    {copy, "files/app.config", "etc/app.config"},
-   {copy, "files/vm.args", "etc/vm.args"},
+   {template, "files/vm.args", "etc/vm.args"},
    {copy, "setup/install.*", "etc/setup/"},
    {copy, "files/setup.sh", "setup.sh"}
 ]}.

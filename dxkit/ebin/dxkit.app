@@ -2,7 +2,7 @@
    dxkit,
    [{description,"Diagnostic and Monitoring Toolkit"},
     {vsn,"0.0.1"},
-    {mod,{appstart_loader,[{fastlog, configure}]}},
+    {mod,{appstarter,[{fastlog, configure}]}},
     {modules,
         [dxkit,
          dxkit_event_bridge,

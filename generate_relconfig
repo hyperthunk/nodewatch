@@ -50,6 +50,9 @@ main(_) ->
                    {sys, "release/files/app.config"}]),
     ok.
 
+host() ->
+    os:getenv("HOST").
+
 vsn() ->
     Vsn = os:cmd("git describe --abbrev=0"),
     string:strip(Vsn, right, $\n).

@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+
+import socket
+import imp
+mk = imp.load_source('mk', 'mk')
+
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+DESC="""
+`configure' configures this package to adapt to many kinds of systems.\n
+To assign environment variables (e.g., CC, CFLAGS...), specify them as
+VAR=VALUE.  See below for descriptions of some of the useful variables.\n
+"""
+
+EPILOGUE="""
+Some influential environment variables:
+  ERL_LIBS    Additional Erlang/OTP library path(s) used during the build process
+
+Use these variables to override the choices made by `configure' or to help
+it to find libraries and programs with nonstandard names/locations.
+"""
+
+HOST_HELPSTRING="""
+The fully qualified host name of the target (for install) machine.\n
+NB: this doesn't have to be the name of the host on which you're
+building and/or configuring the sources.
+"""
+
+MKF_PRELUDE="""
+#!/usr/bin/make -f
+# Makefile wrapper
+
+all: clean compile
+
+"""
+MKF_RULE="""
+%(rule):
+%(instructions)]
+"""
+MKF_INSTRUCTION='	%(stmt)\n'
+
+def configure(opts):
+    output = mk.Writer(opts)
+    output.notice('Configure - generates blah')
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description=DESC, epilog=EPILOGUE,
+                          parents=[mk.root_argparser], conflict_handler='resolve')
+    parser.add_argument('--prefix',
+                      default='/opt/nodewatch',
+                      help=mk.helpstr('install architecture-independent files in PREFIX'))
+    parser.add_argument('-n', '--host',
+                      default=socket.getfqdn(),
+                      help=mk.helpstr(HOST_HELPSTRING))
+                    
+    configure(parser.parse_args())

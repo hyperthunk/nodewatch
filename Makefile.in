@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+# Makefile wrapper
+
+all: clean compile
+
+compile:
+	@(python mk compile %(local)s $(verbose)s %(quiet)s)
+
+install:
+	%(install)s
+
+uninstall:
+	%(uninstall)s
+
+clean:
+	@(python mk clean %(local)s %(verbose)s %(quiet)s)
+
+.PHONY: clean dist distclean check uninstall install all compile

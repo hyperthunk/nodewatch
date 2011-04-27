@@ -22,4 +22,5 @@ release/setup/
 log
 .hosts.erlang.net.conf
 dxweb/priv/www/development-bundle
-dump-data.txt
+dump-data.txtmkc
+mkc

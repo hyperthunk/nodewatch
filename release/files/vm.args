@@ -1,6 +1,6 @@
 
 ## Name of the node
--name nodewatch@127.0.0.1
+-name nodewatch@{{ host }}
 
 ## Cookie for distributed erlang
 ## -setcookie nodewatch
