@@ -23,4 +23,6 @@ log
 .hosts.erlang.net.conf
 dxweb/priv/www/development-bundle
 dump-data.txtmkc
-mkc
+mkcMakefile
+Makefile
+build/scripts/mkc

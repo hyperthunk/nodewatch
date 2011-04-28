@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+#from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from optparse import OptionParser, TitledHelpFormatter
 from inspect import isfunction, getmembers
 import formatter
 import types
@@ -30,37 +31,35 @@ environment variable and (therefore) the --xlibs option which sets it.
 
 XLIBS_HELPSTR="""
 Appends to ERL_LIBS (without altering the environment variable).\n
-[$ERL_LIBS]
+[defaults to $ERL_LIBS]
 """
 
-root_argparser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter,
-                                add_help=False)
+USAGE = "usage: %prog [options] (COMMANDS)"
+#root_argparser.add_argument('--version',
+#                            action='version',
+#                            version=('%(prog)s build tool v' + VSN))
 
-root_argparser.add_argument('--version',
-                            action='version',
-                            version=('%(prog)s build tool v' + VSN))
-root_argparser.add_argument('-s', '--startdir',
-                            default=os.getcwd(),
-                            help='Start (excution) in this directory (defaults to $CWD)')
-root_argparser.add_argument('-f', '--force', action='store_true',
-                            help='Force execution (ignored when not applicable).')
-root_argparser.add_argument('-i', '--incl-deps', action='store_true',
-                            help='Include dependencies (ignored when not applicable).')
+def default_options(**kwargs):
+    parser = OptionParser(**kwargs)
+    parser.add_option('-s', '--startdir', default=os.getcwd(), dest='startdir',
+                      help='Start (excution) in this directory')
+    parser.add_option('-f', '--force', action='store_true', dest='force',
+                      help='Force execution (ignored when not applicable).')
+    parser.add_option('-i', '--incl-deps', action='store_true', dest='incl_deps',
+                      help='Include dependencies (ignored when not applicable).')
+    parser.add_option('-x', '--xlibs', action='append', dest='xlibs',
+                      default=ERL_LIBS, help=XLIBS_HELPSTR)
+    parser.add_option('-l', '--localdeps', action='store_true', dest='localdeps',
+                      help=LOCAL_DEPS_HELPSTR)
+    parser.add_option('-v', '--verbose', action='store_true', dest='verbose',
+                      help='Flush all output (including subprogram) to stdout.')
+    parser.add_option('-q', '--quiet', action='store_true', dest='quiet',
+                      help='Supress all output (including subprogram).')
+    return parser
 
-lib_opts = root_argparser.add_mutually_exclusive_group()
-lib_opts.add_argument('-x', '--xlibs',
-                            action='append',
-                            default=ERL_LIBS,
-                            help=XLIBS_HELPSTR)
-lib_opts.add_argument('-l', '--localdeps',
-                            action='store_true',
-                            help=helpstr(LOCAL_DEPS_HELPSTR))
-
-chitter = root_argparser.add_mutually_exclusive_group()
-chitter.add_argument('-v', '--verbose', action='store_true',
-                            help='Flush all output (including subprogram) to stdout.')
-chitter.add_argument('-q', '--quiet', action='store_true',
-                            help='Supress all output (including subprogram).')
+root_argparser = default_options(usage=USAGE, 
+                                 description="mk build utility", 
+                                 version=VSN)
 
 ## Utilities
 
@@ -315,14 +314,6 @@ class Rebar(ExtProgram):
 
         return super(Rebar, self).execute(*arguments)
 
-def test(opts):
-    return rebar('ct', opts)
-
-def bootstrap(opts):
-    cmd = Rebar(opts, config='depends.config', stage='BOOTSTRAP',
-                      description='fetch and compile dependencies')
-    return cmd.execute('get-deps', 'compile')
-
 def commands(*allowed):
     cmd_list = list(allowed)
     def callsite(fn):
@@ -334,6 +325,30 @@ def commands(*allowed):
         return wrapper
     return callsite
 
+def lookup_command(cmd, site=None):
+    if site is None:
+        site = sys.modules[__name__]
+    fn = getattr(site, cmd, None)
+    if isfunction(fn):
+        return fn
+    try:
+        [x] = [ f for (_,f) in getmembers(site, isfunction)
+                    if f.func_closure is not None and
+                    cmd in f.func_closure[0].cell_contents ]
+        return x
+    except ValueError:
+        return None
+
+## COMMANDS
+
+def test(_, opts):
+    return rebar('ct', opts)
+
+def bootstrap(_, opts):
+    cmd = Rebar(opts, config='depends.config', stage='BOOTSTRAP',
+                      description='fetch and compile dependencies')
+    return cmd.execute('get-deps', 'compile')
+
 @commands('clean', 'compile', 'ct')
 def rebar(cmd, opts):
     return Rebar(opts, stage=cmd.upper()).execute(cmd)
@@ -341,27 +356,17 @@ def rebar(cmd, opts):
 def template(fin, fout, opts):
     return Template(fin, fout).execute(opts)
 
-def lookup_command(cmd, site=None):
-    if site is None:
-        site = sys.modules[__name__]
-    fn = getattr(mod, cmd, None)
-    if isfunction(fn):
-        return fn
-    try:
-        [x] = [ f for (_,f) in getmembers(mk, isfunction)
-                    if f.func_closure is not None and
-                    cmd in f.func_closure[0].cell_contents ]
-    except ValueError:
-        return None
-
-if __name__ == '__main__':
-    mkparser = ArgumentParser(description="mk build utility",
-                              parents=[root_argparser])
-    mkparser.add_argument('cmd', nargs='+',
-                          help='Commands to be run')
-    opts = mkparser.parse_args()
-    for cmd in opts.cmd:
-        fn = lookup_command(cmd)
+def main():
+    #mkparser = ArgumentParser(description="mk build utility",
+    #                          parents=[root_argparser])
+    #mkparser.add_argument('cmd', nargs='+',
+    #                      help='Commands to be run')
+    (opts, args) = root_argparser.parse_args()
+    for cmd in args:
+        fn = lookup_command(cmd, sys.modules[__name__])
         if fn is not None:
             fn(cmd, opts)
+
+if __name__ == '__main__':
+    main()
 

@@ -4,10 +4,13 @@
 all: clean compile
 
 clean:
-	@(python mk clean %(local)s %(verbose)s %(quiet)s)
+	@(python build/scripts/mk clean %(local)s)
+
+distclean: clean
+	@(rm -dr lib)
 
 compile:
-	@(python mk compile %(local)s $(verbose)s %(quiet)s)
+	@(python build/scripts/mk compile %(local)s)
 
 install:
 	@(./install.sh)
@@ -15,4 +18,4 @@ install:
 uninstall:
 	@(./uninstall.sh)
 
-.PHONY: clean compile uninstall install all
+.PHONY: distclean clean compile uninstall install all

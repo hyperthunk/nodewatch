@@ -2,22 +2,20 @@
 
 import socket
 import imp
-mk = imp.load_source('mk', 'mk')
+mk = imp.load_source('mk', 'build/scripts/mk')
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 DESC="""
-`configure' configures this package to adapt to many kinds of systems.\n
+Configures this package to adapt to many kinds of systems.\n
 To assign environment variables (e.g., CC, CFLAGS...), specify them as
 VAR=VALUE.  See below for descriptions of some of the useful variables.\n
 """
 
 EPILOGUE="""
-Some influential environment variables:
-  ERL_LIBS    Additional Erlang/OTP library path(s) used during the build process
-
-Use these variables to override the choices made by `configure' or to help
-it to find libraries and programs with nonstandard names/locations.
+The ERL_LIBS environment variable needs to include this (top level) directory
+if you're planning to use the generated Makefile(s) to compile/build this
+software. Use the supplied `setenv.sh' script in this case.
 """
 
 HOST_HELPSTRING="""
@@ -26,20 +24,26 @@ NB: this doesn't have to be the name of the host on which you're
 building and/or configuring the sources.
 """
 
-def configure(opts):
+def configure(opts, args):
     output = mk.Writer(opts)
     output.show_stage('CONFIGURE', 'Generate Makefile(s)')
-    # mk.template()
-    
+    if opts.localdeps:
+        lcl = '-l'
+    else: 
+        lcl = ''
+    mk.template('Makefile.in', 'Makefile', dict(local=lcl))
+
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description=DESC, epilog=EPILOGUE,
-                          parents=[mk.root_argparser], conflict_handler='resolve')
-    parser.add_argument('--prefix',
+    parser = mk.default_options(description=DESC,
+                                epilog=EPILOGUE,
+                                usage=mk.USAGE,
+                                version='configure v%s' % mk.VSN)
+    parser.add_option('--prefix',
                       default='/opt/nodewatch',
-                      help=mk.helpstr('install architecture-independent files in PREFIX'))
-    parser.add_argument('-n', '--host',
+                      help='install architecture-independent files in PREFIX')
+    parser.add_option('-n', '--hostname',
                       default=socket.getfqdn(),
-                      help=mk.helpstr(HOST_HELPSTRING))
-                    
-    configure(parser.parse_args())
+                      help=HOST_HELPSTRING)
+
+    configure(*parser.parse_args())
