@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from inspect import isfunction, getmembers
 import formatter
 import types
 import os
@@ -8,6 +9,62 @@ import shlex
 import subprocess
 import sys
 import re
+
+## Data Elements
+
+VSN = subprocess.check_output(
+    ["git", "describe", "--abbrev=0"],
+    stderr=subprocess.STDOUT, shell=False).strip()
+
+ERL_LIBS = os.getenv('ERL_LIBS').split(os.pathsep)
+ALT_ENV = [os.getcwd(), os.sep.join([os.getcwd(), 'lib'])]
+
+def helpstr(s):
+    return s + '\n[%(default)s]'
+
+LOCAL_DEPS_HELPSTR="""
+Resolve (and thereafter honour) project-local dependencies over all others.
+This option overrides (and therefore invalidates) the use of the ERL_LIBS
+environment variable and (therefore) the --xlibs option which sets it.
+"""
+
+XLIBS_HELPSTR="""
+Appends to ERL_LIBS (without altering the environment variable).\n
+[$ERL_LIBS]
+"""
+
+root_argparser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter,
+                                add_help=False)
+
+root_argparser.add_argument('--version',
+                            action='version',
+                            version=('%(prog)s build tool v' + VSN))
+root_argparser.add_argument('-s', '--startdir',
+                            default=os.getcwd(),
+                            help='Start (excution) in this directory (defaults to $CWD)')
+root_argparser.add_argument('-f', '--force', action='store_true',
+                            help='Force execution (ignored when not applicable).')
+root_argparser.add_argument('-i', '--incl-deps', action='store_true',
+                            help='Include dependencies (ignored when not applicable).')
+
+lib_opts = root_argparser.add_mutually_exclusive_group()
+lib_opts.add_argument('-x', '--xlibs',
+                            action='append',
+                            default=ERL_LIBS,
+                            help=XLIBS_HELPSTR)
+lib_opts.add_argument('-l', '--localdeps',
+                            action='store_true',
+                            help=helpstr(LOCAL_DEPS_HELPSTR))
+
+chitter = root_argparser.add_mutually_exclusive_group()
+chitter.add_argument('-v', '--verbose', action='store_true',
+                            help='Flush all output (including subprogram) to stdout.')
+chitter.add_argument('-q', '--quiet', action='store_true',
+                            help='Supress all output (including subprogram).')
+
+## Utilities
+
+## Terminal controller taken from the activestate.com python cookbook
 
 class TerminalController(object):
     # Cursor movement:
@@ -40,11 +97,11 @@ class TerminalController(object):
 
     # Foreground colors:
     BLACK = BLUE = GREEN = CYAN = RED = MAGENTA = YELLOW = WHITE = ''
-    
+
     # Background colors:
     BG_BLACK = BG_BLUE = BG_GREEN = BG_CYAN = ''
     BG_RED = BG_MAGENTA = BG_YELLOW = BG_WHITE = ''
-    
+
     _STRING_CAPABILITIES = """
     BOL=cr UP=cuu1 DOWN=cud1 LEFT=cub1 RIGHT=cuf1
     CLEAR_SCREEN=clear CLEAR_EOL=el CLEAR_BOL=el1 CLEAR_EOS=ed BOLD=bold
@@ -66,11 +123,11 @@ class TerminalController(object):
         # terminal has no capabilities.
         try: curses.setupterm()
         except: return
-        
+
         # Look up numeric capabilities.
         self.COLS = curses.tigetnum('cols')
         self.LINES = curses.tigetnum('lines')
-        
+
         # Look up string capabilities.
         for capability in self._STRING_CAPABILITIES:
             (attrib, cap_name) = capability.split('=')
@@ -110,15 +167,18 @@ class TerminalController(object):
         if s == '$$': return s
         else: return getattr(self, s[2:-1])
 
-VSN = subprocess.check_output(
-    ["git", "describe", "--abbrev=0"],
-    stderr=subprocess.STDOUT, shell=False).strip()
+class Subscriptable(object):
+    
+    def __init__(self, delegate):
+        self.delegate = delegate
+    
+    def __getitem__(self, key):
+        return getattr(self.delegate, key)
 
-ERL_LIBS = os.getenv('ERL_LIBS').split(os.pathsep)
-ALT_ENV = [os.getcwd(), os.sep.join([os.getcwd(), 'lib'])]
-
-def helpstr(s):
-    return s + '\n[%(default)s]'
+def subscriptable(thing):
+    if hasattr(thing, '__getitem__'):
+        return thing
+    return Subscriptable(thing)
 
 class Writer(object):
 
@@ -151,13 +211,13 @@ class Writer(object):
         self.formatter.add_literal_data(self.tc.render('${NORMAL}'))
         self.formatter.add_line_break()
         return self
-    
+
     def show_error(self, err):
         self.error_formatter.add_literal_data(
             self.tc.render('${BOLD}${RED}[ERROR]: %s${NORMAL}' % err))
         self.error_formatter.add_line_break()
         return self
-    
+
     def show_command(self, txt):
         self.formatter.add_literal_data(
             self.tc.render('${BOLD}${GREEN}    >> %s${NORMAL}' % txt))
@@ -166,10 +226,22 @@ class Writer(object):
         self.writer.flush()
         return self
 
-class SubProgram(object):
+class Template(object):
+    
+    def __init__(self, fdin, fdout=None):
+        self.fdin = fdin
+        self.fdout = fdout
+    
+    def execute(self, bindings):
+        with open(self.fdin) as fd_in:
+            template = fd_in.read()
+            with open(self.fdout, 'w') as fd_out:
+                fd_out.write(template % subscriptable(bindings))
 
-    def __init__(self, opts, description=None, 
-                             stage='BUILD', 
+class ExtProgram(object):
+
+    def __init__(self, opts, description=None,
+                             stage='BUILD',
                              fail_on_error=True):
         self.opts = opts
         self.stage = stage
@@ -208,7 +280,7 @@ class SubProgram(object):
         if self.returncode is not 0 and self.fail_on_error:
             if serr is not None:
                 err = serr
-            elif sout is not None: 
+            elif sout is not None:
                 err = sout
             else:
                 err = 'Program %s terminated with non-zero status [%i]' % (self.exe, self.returncode)
@@ -217,7 +289,7 @@ class SubProgram(object):
         else:
             return self
 
-class Rebar(SubProgram):
+class Rebar(ExtProgram):
 
     exe = 'rebar'
 
@@ -244,70 +316,43 @@ class Rebar(SubProgram):
         return super(Rebar, self).execute(*arguments)
 
 def test(opts):
-    rebar('clean', dict(config='rebar.config2'))
+    return rebar('ct', opts)
 
 def bootstrap(opts):
     cmd = Rebar(opts, config='depends.config', stage='BOOTSTRAP',
                       description='fetch and compile dependencies')
-    cmd.execute('get-deps', 'compile')
-
-REBAR_CMDS = ['clean', 'compile', 'ct']
+    return cmd.execute('get-deps', 'compile')
 
 def commands(*allowed):
     cmd_list = list(allowed)
     def callsite(fn):
         def wrapper(*args, **kwargs):
-            cmds = [ x for x in list(args) 
+            cmds = [ x for x in list(args)
                         if isinstance(x, types.StringTypes) and x in cmd_list ]
             for cmd in cmds:
                 fn(cmd, *args[1:], **kwargs)
         return wrapper
     return callsite
 
-@commands(*REBAR_CMDS)
+@commands('clean', 'compile', 'ct')
 def rebar(cmd, opts):
-    Rebar(opts, stage=cmd.upper()).execute(cmd)
+    return Rebar(opts, stage=cmd.upper()).execute(cmd)
 
-LOCAL_DEPS_HELPSTR="""
-Resolve (and thereafter honour) project-local dependencies over all others.
-This option overrides (and therefore invalidates) the use of the ERL_LIBS
-environment variable and (therefore) the --xlibs option which sets it.
-"""
+def template(fin, fout, opts):
+    return Template(fin, fout).execute(opts)
 
-XLIBS_HELPSTR="""
-Appends to ERL_LIBS (without altering the environment variable).\n
-[$ERL_LIBS]
-"""
-
-
-root_argparser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter,
-                                add_help=False)
-
-root_argparser.add_argument('--version',
-                            action='version',
-                            version=('%(prog)s build tool v' + VSN))
-root_argparser.add_argument('-s', '--startdir',
-                            default=os.getcwd(),
-                            help='Start (excution) in this directory (defaults to $CWD)')
-root_argparser.add_argument('-f', '--force', action='store_true',
-                            help='Force execution (ignored when not applicable).')
-root_argparser.add_argument('-i', '--incl-deps', action='store_true',
-                            help='Include dependencies (ignored when not applicable).')
-
-lib_opts = root_argparser.add_mutually_exclusive_group()
-lib_opts.add_argument('-x', '--xlibs',
-                            action='append',
-                            default=ERL_LIBS,
-                            help=XLIBS_HELPSTR)
-lib_opts.add_argument('-l', '--localdeps',
-                            action='store_true',
-                            help=helpstr(LOCAL_DEPS_HELPSTR))
-
-chitter = root_argparser.add_mutually_exclusive_group()
-chitter.add_argument('-v', '--verbose', action='store_true',
-                            help='Flush all output (including subprogram) to stdout.')
-chitter.add_argument('-q', '--quiet', action='store_true',
-                            help='Supress all output (including subprogram).')
+def lookup_command(cmd, site=None):
+    if site is None:
+        site = sys.modules[__name__]
+    fn = getattr(mod, cmd, None)
+    if isfunction(fn):
+        return fn
+    try:
+        [x] = [ f for (_,f) in getmembers(mk, isfunction)
+                    if f.func_closure is not None and
+                    cmd in f.func_closure[0].cell_contents ]
+    except ValueError:
+        return None
 
 if __name__ == '__main__':
     mkparser = ArgumentParser(description="mk build utility",
@@ -315,12 +360,8 @@ if __name__ == '__main__':
     mkparser.add_argument('cmd', nargs='+',
                           help='Commands to be run')
     opts = mkparser.parse_args()
-
-    from inspect import isfunction
     for cmd in opts.cmd:
-        fn = getattr(sys.modules[__name__], opts.cmd[0], None)
-        if isfunction(fn):
-            fn(opts)
-        elif cmd in REBAR_CMDS:
-            rebar(cmd, opts)
+        fn = lookup_command(cmd)
+        if fn is not None:
+            fn(cmd, opts)
 

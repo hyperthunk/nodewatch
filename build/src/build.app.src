@@ -1,0 +1,12 @@
+{application, build,
+ [
+  {description, ""},
+  {vsn, git},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { release_plugin, []}},
+  {env, []}
+ ]}.

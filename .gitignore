@@ -3,14 +3,14 @@
 *.beam
 *.o
 *.so
-build/*
-^build$
+vsn.git
 Emakefile
 coverage
 coverage/*
 erl_crash.dump
 test/logs/
 ebin/*.beam
+*/ebin/*.app
 logs/*
 .DS_Store
 lib

@@ -26,22 +26,11 @@ NB: this doesn't have to be the name of the host on which you're
 building and/or configuring the sources.
 """
 
-MKF_PRELUDE="""
-#!/usr/bin/make -f
-# Makefile wrapper
-
-all: clean compile
-
-"""
-MKF_RULE="""
-%(rule):
-%(instructions)]
-"""
-MKF_INSTRUCTION='	%(stmt)\n'
-
 def configure(opts):
     output = mk.Writer(opts)
-    output.notice('Configure - generates blah')
+    output.show_stage('CONFIGURE', 'Generate Makefile(s)')
+    # mk.template()
+    
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=DESC, epilog=EPILOGUE,
