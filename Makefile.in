@@ -4,18 +4,24 @@
 all: clean compile
 
 clean:
-	@(python build/scripts/mk clean %(local)s)
+	@(python build/priv/scripts/mk clean %(local)s)
+
+dist: 
+	@(python build/priv/scripts/mk archive)
 
 distclean: clean
 	@(rm -dr lib)
 
 compile:
-	@(python build/scripts/mk compile %(local)s)
+	@(python build/priv/scripts/mk compile %(local)s)
 
 install:
-	@(./install.sh)
+	@(mkdir -p %(target)s)
+	@(cp -R %(source)s %(target)s)
+	@(chown -R %(user)s %(target)s)
+	@(chgrp -R %(group)s %(target)s)
 
 uninstall:
-	@(./uninstall.sh)
+	@(rm -dr %(target)s)
 
 .PHONY: distclean clean compile uninstall install all

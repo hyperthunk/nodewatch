@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
+import os, grp
 import socket
 import imp
-mk = imp.load_source('mk', 'build/scripts/mk')
+mk = imp.load_source('mk', 'build/priv/scripts/mk')
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -26,13 +27,18 @@ building and/or configuring the sources.
 
 def configure(opts, args):
     output = mk.Writer(opts)
-    output.show_stage('CONFIGURE', 'Generate Makefile(s)')
+    output.show_stage('CONFIGURE', 'Generating Makefile(s)')
+    # TODO: use mk.release_directory(opts) + '*'
+    src = os.sep.join([mk.release_directory(opts), '*'])
+    targ = os.sep.join([opts.prefix, 'nodewatch'])
     if opts.localdeps:
         lcl = '-l'
-    else: 
+    else:
         lcl = ''
-    mk.template('Makefile.in', 'Makefile', dict(local=lcl))
 
+    make_vars = dict(map(lambda a: (a, getattr(opts, a)), ['user', 'group']) +
+                    [('source', src), ('target', targ), ('local', lcl)])
+    mk.template('Makefile.in', 'Makefile', make_vars)
 
 if __name__ == '__main__':
     parser = mk.default_options(description=DESC,
@@ -40,8 +46,14 @@ if __name__ == '__main__':
                                 usage=mk.USAGE,
                                 version='configure v%s' % mk.VSN)
     parser.add_option('--prefix',
-                      default='/opt/nodewatch',
+                      default='/opt',
                       help='install architecture-independent files in PREFIX')
+    parser.add_option('-u', '--with-user',
+                      default=os.getlogin(), dest='user', type="string",
+                      help='Normalise ownership permissions for USER')
+    parser.add_option('-g', '--with-group', dest='group', type="string",
+                      default=grp.getgrgid(os.getegid()).gr_name,
+                      help='Normalise ownership permissions for GROUP')
     parser.add_option('-n', '--hostname',
                       default=socket.getfqdn(),
                       help=HOST_HELPSTRING)

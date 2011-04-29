@@ -40,7 +40,7 @@ tag({_, Dir, _}, _) ->
     Path = filename:join([Dir, "priv"]),
     case filelib:is_dir(Path) of
         false ->
-            ?DEBUG("Skipping tag command because ~s doesn't exist~n", [Path]),
+            ?DEBUG("Skipping tag command in non existent dir ~s~n", [Path]),
             ok;
         true ->
             Dest = filename:join([Path, "vsn.git"]),

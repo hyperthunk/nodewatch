@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-from optparse import OptionParser, TitledHelpFormatter
+from optparse import OptionParser
 from inspect import isfunction, getmembers
 import formatter
 import types
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import re
@@ -329,6 +330,10 @@ class Rebar(ExtProgram):
 
         return super(Rebar, self).execute(*arguments)
 
+def release_directory(opts):
+    return reduce(lambda a,b: os.sep.join([a, b]),
+                 [opts.startdir, 'release', 'nodewatch'])
+
 def commands(*allowed):
     cmd_list = list(allowed)
     def callsite(fn):
@@ -370,6 +375,12 @@ def rebar(cmd, opts):
 
 def template(fin, fout, opts):
     return Template(fin, fout).execute(opts)
+
+def archive(_, opts):
+    # TODO: proper stdout logging
+    rel = release_directory(opts)
+    # TODO: figure out why this puts the complete path into the archive...
+    print shutil.make_archive('nodewatch', 'zip', rel, rel, True)
 
 def main():
     #mkparser = ArgumentParser(description="mk build utility",
