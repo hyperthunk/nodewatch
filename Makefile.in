@@ -7,10 +7,10 @@ clean:
 	@(python build/priv/scripts/mk clean %(local)s)
 
 dist: 
-	@(python build/priv/scripts/mk archive)
+	@(python build/priv/scripts/mk dist %(local)s)
 
 distclean: clean
-	@(rm -dr lib)
+	@(python build/priv/scripts/mk distclean %(local)s)
 
 compile:
 	@(python build/priv/scripts/mk compile %(local)s)

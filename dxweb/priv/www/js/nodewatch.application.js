@@ -27,7 +27,7 @@ $(document).ready(function() {
       interpolate : /\$\{(.+?)\}/g,
       evaluate:     /#\{(.+?)\}/g
     };
-
+    
     // TODO: pull out an ApplicationModel and introduce a controler for this...
 
     window._session = new Session({username: $.cookie('nodewatch.user')});

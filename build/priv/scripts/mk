@@ -369,18 +369,12 @@ def bootstrap(_, opts):
                       description='fetch and compile dependencies')
     return cmd.execute('get-deps', 'compile')
 
-@commands('clean', 'compile', 'ct')
+@commands('distclean', 'dist', 'clean', 'compile', 'ct')
 def rebar(cmd, opts):
     return Rebar(opts, stage=cmd.upper()).execute(cmd)
 
 def template(fin, fout, opts):
     return Template(fin, fout).execute(opts)
-
-def archive(_, opts):
-    # TODO: proper stdout logging
-    rel = release_directory(opts)
-    # TODO: figure out why this puts the complete path into the archive...
-    print shutil.make_archive('nodewatch', 'zip', rel, rel, True)
 
 def main():
     #mkparser = ArgumentParser(description="mk build utility",
