@@ -35,6 +35,8 @@ def configure(opts, args):
         lcl = '-l'
     else:
         lcl = ''
+    if opts.verbose:
+        lcl += " -v"
 
     make_vars = dict(map(lambda a: (a, getattr(opts, a)), ['user', 'group']) +
                     [('source', src), ('target', targ), ('local', lcl)])

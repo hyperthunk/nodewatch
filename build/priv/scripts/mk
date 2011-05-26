@@ -367,7 +367,7 @@ def test(_, opts):
 def bootstrap(_, opts):
     cmd = Rebar(opts, config='depends.config', stage='BOOTSTRAP',
                       description='fetch and compile dependencies')
-    return cmd.execute('get-deps', 'compile')
+    return cmd.execute('get-deps', 'compile-deps')
 
 @commands('distclean', 'dist', 'clean', 'compile', 'ct')
 def rebar(cmd, opts):

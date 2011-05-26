@@ -34,7 +34,7 @@
 
 -export([tag/2, vsn/0]).
 
--include("build.hrl").
+-define(DEBUG(Str, Args), rebar_log:log(debug, Str, Args)).
 
 tag({_, Dir, _}, _) ->
     Path = filename:join([Dir, "priv"]),
