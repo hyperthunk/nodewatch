@@ -40,14 +40,14 @@
 
 -export([start_link/2]).
 
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 %%
 %% Public API
 %%
 
 start_link(Handler, Options) ->
-    fastlog:info(dxkit.event, "Starting Handler ~p~n", [Handler]),
+    ?INFO("Starting Handler ~p~n", [Handler]),
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Handler, Options], []).
 
 %%
@@ -57,7 +57,7 @@ start_link(Handler, Options) ->
 %% @hidden
 init([Handler, Args]) ->
     Result = gen_event:add_sup_handler(dxkit_event_handler, Handler, Args),
-    fastlog:info(dxkit.event, "Subscription: ~p~n", [Result]),
+    ?INFO("Subscription: ~p~n", [Result]),
     case Result of
         ok ->
             process_flag(trap_exit, true),
@@ -67,7 +67,7 @@ init([Handler, Args]) ->
     end.
 
 handle_call(Msg, _From, State) ->
-    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
+    ?DEBUG("In ~p `Call': ~p~n", [self(), Msg]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
@@ -82,7 +82,7 @@ handle_info({gen_event_EXIT, _Handler, {swapped,_,_}}, State) ->
 handle_info({gen_event_EXIT, Handler, Reason}, State) ->
     {stop, {exit, Handler, Reason}, State};
 handle_info(Info, State) ->
-    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+    ?DEBUG("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

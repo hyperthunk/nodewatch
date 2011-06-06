@@ -46,7 +46,7 @@
 -compile(export_all).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 -record(state, {node}).
 
@@ -82,7 +82,6 @@ tick(State, [{_, _}|_]=Events) ->
 tick(State, Data) ->
     ?DEBUG("Unexpected Event Consumer Data: ~p~n", [Data]),
     State.
-
 
 %% Internal API
 

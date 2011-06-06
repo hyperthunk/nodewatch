@@ -36,7 +36,7 @@
 -export([permanent_subscriber/2, 
          poke_subscribers/0, publish_event/1]).
 
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 %%
 %% Public API

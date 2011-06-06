@@ -37,25 +37,18 @@
 -define(TEMPLATE_MOD, reltool_config_template).
 -define(INFO(Str, Args), rebar_log:log(info, Str, Args)).
 
-compile(_Config, undefined) ->
-    %% NB: depending on CWD is a bit of a hack, but rebar doesn't pass AppFile
-    %% to us as there isn't one for the 'release' sub_dir. Besides, it's less of
-    %% a hack than what generate/2 is doing with the *internal* structure of 
-    %% rebar_config data elements! :S
-
-    {ok, Path} = file:get_cwd(),
+compile(_Config, _) ->
+    Path = rebar_utils:get_cwd(),
     Dest = filename:join([Path, "reltool.config"]),
     Src = Dest ++ ".src",
     ?INFO("Copying ~p to ~p~n", [Src, Dest]),
     Vsn = git_vsn_plugin:vsn(),
 
-    %% TODO: use rebar_templater instead of this....
-    erlydtl:compile(Src, ?TEMPLATE_MOD),
-    write(Dest, ?TEMPLATE_MOD, [{notice, ?NOTICE},
-                                {version, Vsn},
-                                {erts_vsn, erlang:system_info(version)},
-                                {erl_libs, lib_dirs()},
-                                {app_deps, incl_apps()}]),
+    write(Src, Dest, [{notice, ?NOTICE},
+                      {version, Vsn},
+                      {erts_vsn, erlang:system_info(version)},
+                      {erl_libs, lib_dirs()},
+                      {app_deps, incl_apps()}]),
     setup_gen:run([{conf, "nodewatch.conf"},
                    {outdir, "setup"},
                    {name, "nodewatch"},
@@ -96,9 +89,9 @@ incl_apps() ->
                            not lists:member(App, [dxcommon, dxdb, dxkit]) ],
     string:join([io_lib:format("~p~n", [Inc]) || Inc <- Incl], ", ").
 
-write(Dest, Mod, Vars) ->
-    %% TODO: rewrite this to use rebar_templater
-    {ok, Res} = Mod:render(Vars),
+write(Src, Dest, Vars) ->
+    {ok, Bin} = file:read_file(Src),
+    Res = rebar_templater:render(Bin, dict:from_list(Vars)),
     case file:write_file(filename:absname(Dest), list_to_binary(Res)) of
         ok -> ok;
         {error, WriteError} ->

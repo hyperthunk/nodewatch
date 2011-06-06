@@ -26,3 +26,4 @@ dump-data.txtmkc
 mkcMakefile
 Makefile
 build/scripts/mkc
+build/priv/scripts/mkc

@@ -6,8 +6,11 @@ all: clean compile
 clean:
 	@(python build/priv/scripts/mk clean %(local)s)
 
-dist: 
+dist: generate
 	@(python build/priv/scripts/mk dist %(local)s)
+
+generate: compile
+	@(python build/priv/scripts/mk generate %(local)s)
 
 distclean: clean
 	@(python build/priv/scripts/mk distclean %(local)s)

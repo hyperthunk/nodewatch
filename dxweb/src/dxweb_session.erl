@@ -48,7 +48,7 @@
          all_sessions/0, get_user_from_req/1, suspend_session_websocket/1]).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 -record(session, {sid, user, websock}).
 
@@ -180,14 +180,14 @@ handle_call({send_all, Term}, _, State) ->
                   ets:tab2list('dxweb.sessions')),
     {reply, ok, State};
 handle_call(Msg, {_From, _Tag}, State) ->
-    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
+    ?DEBUG("In ~p `Call': ~p~n", [self(), Msg]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info(Info, State) ->
-    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+    ?DEBUG("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

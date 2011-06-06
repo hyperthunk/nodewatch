@@ -24,7 +24,7 @@
 %% ------------------------------------------------------------------------------
 -module(dxweb_controller).
 -author('Tim Watson <watson.timothy@gmail.com>').
-
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 -export([get/3, put/3, delete/3]).
 
 get(Req, _SID, ["nodes"]) ->
@@ -38,12 +38,12 @@ get(Req, _SID, ["subscriptions", User, NodeId]) ->
         dxdb:find_user_subscriptions_for_node(User, NodeId)).
 
 put(Req, SID, ["subscriptions", "active", User]) ->
-    fastlog:info("Enable (Active) Subscriptions for ~p~n", [User]),
+    ?INFO("Enable (Active) Subscriptions for ~p~n", [User]),
     dxkit:activate_subscriptions(User, SID),
     Req:respond(200).
 
 delete(Req, SID, ["subscriptions", "active", User]) ->
-    fastlog:info("Disable (Active) Subscriptions for ~p~n", [User]),
+    ?INFO("Disable (Active) Subscriptions for ~p~n", [User]),
     dxkit:disable_subscriptions(SID),
     Req:respond(200).
 

@@ -42,7 +42,7 @@
 
 -export([start_link/0, start_listening/0, sink_event/1]).
 
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 %%
 %% Public API
@@ -72,18 +72,18 @@ init(_) ->
 handle_call(get, _, State) ->
     {reply, State, State};
 handle_call(Msg, _From, State) ->
-    fastlog:debug("In ~p `Call': ~p~n", [self(), Msg]),
+    ?DEBUG("In ~p `Call': ~p~n", [self(), Msg]),
     {noreply, State}.
 
 handle_cast({sink, {world, {NodeStatus, NodeInfo}}}, State) ->
     Ev = [{event, [{tag, atom_to_binary(NodeStatus, utf8)},
-                   {data, dxcommon.data:jsonify(NodeInfo)}]}],
+                   {data, dx_json:jsonify(NodeInfo)}]}],
     dxweb_session:send_all(Ev),
     {noreply, [Ev|State]};
 handle_cast({sink, {SID, _Node, {Tag,_}=Event}}, State) ->
     ?INFO("SINK: ~p~n", [Tag]),
     Ev = [{event, [{tag, atom_to_binary(Tag, utf8)},
-                   {data, dxcommon.data:jsonify(Event)}]}],
+                   {data, dx_json:jsonify(Event)}]}],
     dxweb_session:send(SID, Ev),
     {noreply, State};
 handle_cast({sink, Ev}, State) ->
@@ -94,7 +94,7 @@ handle_cast(start, State) ->
     {noreply, State}.
 
 handle_info(Info, State) ->
-    fastlog:debug("node ~p unknown status message; state=~p", [Info, State]),
+    ?DEBUG("node ~p unknown status message; state=~p", [Info, State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

@@ -38,6 +38,7 @@
 -export([init/1]).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 %%
 %% API functions
@@ -78,7 +79,7 @@ init(_) ->
 
 start_child(User, Subscriber, Node) ->
     %% TODO: get dxdb to collate the node /w sensors in one shot
-    fastlog:debug("Starting subscription ~p:~p on ~p~n",
+    ?DEBUG("Starting subscription ~p:~p on ~p~n",
                   [User, Subscriber, Node]),
     Sensors = dxdb:find_instrumented_sensors_for_node(User, Node),
     Consumer = dxkit_event_consumer:new(Subscriber, Node, Sensors),

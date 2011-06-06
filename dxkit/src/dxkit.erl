@@ -32,11 +32,12 @@
 
 -module(dxkit).
 -author('Tim Watson <watson.timothy@gmail.com>').
-
 -export([activate_subscriptions/2, disable_subscriptions/1]).
 -export([add_event_sink/1, add_event_sink/2]).
 -export([which_nodes/0, find_node/1]).
 -export([start_dev/0]).
+
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 %%
 %% Public API
@@ -56,13 +57,13 @@ disable_subscriptions(Key) ->
     dxkit_subscription_sup:remove_subscriber(Key).
 
 find_node(NodeId) ->
-    dxkit_world:node(NodeId).
+    dxkit_net_world:node(NodeId).
 
 %%
 %% @doc Returns all the nodes that are currently being monitored.
 %%
 which_nodes() ->
-    dxkit_world:nodes().
+    dxkit_net_world:nodes().
 
 add_event_sink(Mod) ->
     add_event_sink(Mod, []).
@@ -77,6 +78,8 @@ add_event_sink(Mod, Args) ->
 start_dev() ->
     [_H|RevPath] = lists:reverse(filename:split(code:lib_dir(dxcommon))),
     Conf = filename:join(lists:reverse(["testdb.conf", "inttest"] ++ RevPath)),
+    ?INFO("Starting DxKit: ~p~n", [Conf]),
     appstart:start(dxkit),
+    fastlog:info("Pre-Loading MNesia Data~n"),
     {atomic, ok} = mnesia:load_textfile(Conf),
     ok.

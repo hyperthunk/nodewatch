@@ -42,7 +42,7 @@
 %% (or add disk_log support and the concept of multiple appenders to fastlog)
 -record(state, {logfile, level}).
 
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 init([]) ->
   {ok, #state{}}.

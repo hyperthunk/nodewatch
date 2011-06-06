@@ -40,7 +40,7 @@
          terminate/2,
          code_change/3]).
 
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 
 %%
 %% gen_event callbacks

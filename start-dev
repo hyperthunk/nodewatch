@@ -11,6 +11,8 @@ CONFIG="-config $REL_DIR/files/app.config"
 START_ARGS="$SYS $BOOT $CONFIG"
 HOST=`hostname`
 NAME="-name nw-dev@$HOST"
+LIBS="$RUNNER_SCRIPT_DIR:$RUNNER_SCRIPT_DIR/lib:$ERL_LIBS"
+export ERL_LIBS=$LIBS
 
 if [ ! -d "$DEV_DIR" ]; then
     echo "Setting up development environment for first time..."

@@ -27,6 +27,8 @@
 -author('Tim Watson <watson.timothy@gmail.com>').
 -behaviour(supervisor).
 
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
+
 -export([start_link/1]).
 -export([init/1]).
 

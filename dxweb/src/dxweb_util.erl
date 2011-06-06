@@ -41,7 +41,7 @@ marshal([Data]) ->
     %% TODO: write an optimised encoding function for jsx, as it's quite slow.
     marshal(Data);
 marshal(Data) ->
-    case dxcommon.data:jsonify(Data) of
+    case dx_json:jsonify(Data) of
         Json when is_tuple(Json) ->
             jsx:term_to_json([Json]);
         JsonList=[_|_] ->

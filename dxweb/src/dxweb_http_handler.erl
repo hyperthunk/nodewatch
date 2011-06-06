@@ -31,6 +31,8 @@
 -module(dxweb_http_handler).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
+
 -export([start_link/1, http_handler_loop/1, websocket_handler_loop/1]).
 
 start_link(Options) ->
@@ -46,7 +48,7 @@ start_link(Options) ->
 http_handler_loop(Req) ->
     PathComponents = Req:resource([lowercase, urldecode]),
     SID = check_session(Req),
-    fastlog:info("Request[~p]-SID[~p]~n", [PathComponents, SID]),
+    ?INFO("Request[~p]-SID[~p]~n", [PathComponents, SID]),
     handle_http_request(Req, SID, PathComponents).
 
 websocket_handler_loop(Ws) ->
@@ -91,10 +93,10 @@ handle_websocket(Ws) ->
         closed ->
             %% NB: the disconnection of a websocket resets/clears the session
             SessionID = get_ws_client_id(Ws),
-            fastlog:info("Websocket ~p-~pwas closed!~n", [SessionID, Ws]),
+            ?INFO("Websocket ~p-~pwas closed!~n", [SessionID, Ws]),
             ok = dxweb_session:suspend_session_websocket(SessionID);
         Other ->
-            fastlog:debug("Websocket *other* => ~p~n", [Other]),
+            ?DEBUG("Websocket *other* => ~p~n", [Other]),
             handle_websocket(Ws)
     end.
 
@@ -108,19 +110,19 @@ http_method_to_function(Req) ->
 
 get_ws_client_id(Ws) ->
     [$/|ClientID] = Ws:get(path),
-    fastlog:debug("Websocket connection for client ~p~n", [ClientID]),
+    ?DEBUG("Websocket connection for client ~p~n", [ClientID]),
     ClientID.
 
 check_session(Req) ->
     Cookie = dxweb_util:parse_cookie(Req),
     SID = proplists:get_value("sid", Cookie, "ignored"),
-    fastlog:info("Checking Request Cookie (sid): ~p~n", [SID]),
+    ?INFO("Checking Request Cookie (sid): ~p~n", [SID]),
     case dxweb_session:is_valid(SID) of
         true ->
-            fastlog:debug("SID is valid"),
+            ?DEBUG("SID is valid", []),
             SID;
         false ->
-            fastlog:debug("SID is invalid"),
+            ?DEBUG("SID is invalid", []),
             invalid
     end.
 

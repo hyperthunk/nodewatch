@@ -32,7 +32,7 @@
 %%
 %% -----------------------------------------------------------------------------
 
--module(dxkit_world).
+-module(dxkit_net_world).
 -author('Tim Watson <watson.timothy@gmail.com>').
 
 -export([init/1,
@@ -49,7 +49,7 @@
 -behavior(gen_server2).
 
 -include_lib("dxcommon/include/dxcommon.hrl").
--include_lib("fastlog/include/fastlog.hrl").
+-include_lib("fastlog_parse_trans/include/fastlog.hrl").
 -include("dxkit.hrl").
 
 -record(wstate, {
@@ -197,7 +197,7 @@ reset_state({NodeStatus, Node, InfoList}, #wstate{nodes=Tab}=State) ->
         _ ->
             dxkit_net:connect(Node)
     end,
-    ?INFO("Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
+    ?DEBUG("Node ~p status change: ~p~n", [NodeInfo, NodeStatus]),
     ets:insert(Tab, NodeInfo),
     %% TODO: just send the actual node!?
     gen_event:notify(dxkit_event_handler, {world, {NodeStatus, NodeInfo}}),
