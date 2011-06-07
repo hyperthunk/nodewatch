@@ -25,6 +25,12 @@
        {excl_sys_filters, ["^bin/.*",
                            "(edoc|wx)-.*",
                            "^erts.*/bin/(dialyzer|typer)"]},
+       {app, fastlog_parse_trans, [{incl_cond, exclude}]},
+       {app, parse_trans, [{incl_cond, exclude}]},
+       {app, rebar_dist_plugin, [{incl_cond, exclude}]},
+       {app, retest, [{incl_cond, exclude}]},
+       {app, webtool, [{incl_cond, exclude}]},
+       {app, wx, [{incl_cond, exclude}]},
        {app, sasl, [{incl_cond, include}]},
        {{ app_deps }}
       ]}.

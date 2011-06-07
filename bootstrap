@@ -1,3 +1,4 @@
 #!/usr/bin/env sh
 
 python build/priv/scripts/mk bootstrap -l --incl-deps $@
+./configure -l -i $@

@@ -72,7 +72,12 @@ generate({_, Path, _Config}, _) ->
     end.
 
 lib_dirs() ->
-    Paths = ["../lib"|reltool_utils:erl_libs()],
+    Paths = case filelib:is_dir("../lib") of
+        true ->
+            ["../lib"];
+        false ->
+            ["../lib"|reltool_utils:erl_libs()]
+    end,
     Dirs = lists:filter(fun filelib:is_dir/1, Paths),
     lists:flatten([io_lib:format("\"~s\", ", [D]) || D <- Dirs] ++ "\"../\"").
 
