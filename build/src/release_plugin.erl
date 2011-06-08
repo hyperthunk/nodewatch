@@ -38,6 +38,7 @@
 -define(INFO(Str, Args), rebar_log:log(info, Str, Args)).
 
 compile(_Config, _) ->
+    ?INFO("Is rebar_templater loaded? ~p~n", [code:is_loaded(rebar_templater)]),
     Path = rebar_utils:get_cwd(),
     Dest = filename:join([Path, "reltool.config"]),
     Src = Dest ++ ".src",
