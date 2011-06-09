@@ -15,10 +15,10 @@
   {registered,[]},
   {applications,[
     kernel,
-	stdlib,
-	%% required for unique session ids and used by misultin
+    stdlib,
+    %% required for unique session ids and used by misultin
     crypto,
-	%% we use sasl for logging
+    %% we use sasl for logging
     sasl,
     %% riak_err to keep the memory used during logging to a minimum
     %% TODO: integrate riak_err with fastlog to remove the burden from this app

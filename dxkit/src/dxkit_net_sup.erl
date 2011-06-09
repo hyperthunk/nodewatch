@@ -58,5 +58,9 @@ init(WorldArgs) ->
         %% {dxkit_samplers,
         %%     {dxkit_sampler, start_link, []},
         %%      permanent, infinity, supervisor, dynamic}
+        %% ,
+        %% {dxkit_zeroconf,
+        %%     {dxkit_zeroconf, start_link, []},
+        %%      permanent, infinity, supervisor, dynamic}
     ],
     {ok, {{one_for_one, 5, 5}, Children}}.

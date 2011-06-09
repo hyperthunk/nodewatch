@@ -24,7 +24,7 @@
 %% ------------------------------------------------------------------------------
 %%
 %% @doc When used in conjunction with eper, this module sets up monitoring events.
-%% One module is created per active subscriber, with the subscriber's client key 
+%% One module is created per active subscriber, with the subscriber's client key
 %% providing a reply-to mechanism outside this application.
 %%
 %% The spawned process runs on the `nodewatch' host and receives data from another

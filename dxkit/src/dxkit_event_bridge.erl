@@ -23,7 +23,7 @@
 %% THE SOFTWARE.
 %% ------------------------------------------------------------------------------
 %%
-%% @doc 
+%% @doc
 %%
 %% ------------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--export([permanent_subscriber/2, 
+-export([permanent_subscriber/2,
          poke_subscribers/0, publish_event/1]).
 
 -include_lib("fastlog_parse_trans/include/fastlog.hrl").
@@ -44,6 +44,10 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+%% TODO:
+%% temporary_subscriber(Handler, Args) ->
+%%     gen_event:add_handler(dxkit_event_handler, Handler, Args).
 
 permanent_subscriber(Handler, Args) ->
     ?DEBUG("Starting Handler ~p~n", [Handler]),

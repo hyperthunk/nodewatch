@@ -51,7 +51,3 @@ init(_) ->
              permanent, 5000, supervisor, dynamic}
     ],
     {ok, {{rest_for_one, 5, 5}, Children}}.
-%% gen_event:start_link({local, dxkit_event_handler})
-
-
-
