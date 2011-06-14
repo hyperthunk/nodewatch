@@ -18,7 +18,7 @@ distclean: clean
 compile:
 	@(python build/priv/scripts/mk compile %(local)s)
 
-install:
+install: generate
 	@(mkdir -p %(target)s)
 	@(cp -R %(source)s %(target)s)
 	@(chown -R %(user)s %(target)s)
