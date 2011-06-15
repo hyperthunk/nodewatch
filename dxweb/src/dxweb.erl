@@ -37,5 +37,5 @@
 %%
 start_dev() ->
     dxkit:start_dev(),
-    appstart:start(dxweb),
+    appstart:start(dxweb, [{logging, console}]),
     ok.
