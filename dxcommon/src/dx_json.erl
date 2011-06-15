@@ -32,7 +32,6 @@
 -module(dx_json).
 -author('Tim Watson <watson.timothy@gmail.com>').
 -include("dxcommon.hrl").
-
 -compile(export_all).
 
 jsonify(Data) when is_record(Data, user) orelse

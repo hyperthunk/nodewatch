@@ -26,4 +26,6 @@ dump-data.txtmkc
 mkcMakefile
 Makefile
 build/scripts/mkc
+build/priv/scripts/mkccache.yml
+cache.yml
 build/priv/scripts/mkc
