@@ -19,7 +19,7 @@ clean way to get the visibility you need.
 ### How
 
 Many awesome open source libraries have made _Nodewatch_ possible, not least
-of which is [eper](https://github.com/massemanet/eper). _Nodewatch_ mainly
+of which is [eper](https://github.com/massemanet/redbug). _Nodewatch_ mainly
 builds on existing capabilities.
 
 ### License
